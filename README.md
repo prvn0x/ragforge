@@ -131,7 +131,7 @@ In both `verified` rows a server-written abstain counts as verified; badge-flip 
 - **Small samples, one labeller.** n is 20 or fewer on the demo set (see the n column in [RESULTS](docs/RESULTS.md)). Rows that need the owner's labels (on the private set: the verifier's badge-flip recall, span recall and false reject; the judge's calibration) are pending ([RESULTS](docs/RESULTS.md)), and the held-out set is not sealed yet ([DECISIONS](docs/DECISIONS.md)).
 - **Gemini numbers only.** Every answer number above was measured on Gemini Flash-Lite; no local Ollama chat run is measured yet, although Ollama is the default.
 - **Latency.** The hosted 5 s latency target from DESIGN §2 is not met today ([ADR-0018](docs/adr/0018-ops-hardening-security-observability.md), [RESULTS](docs/RESULTS.md)).
-- **Parked work.** CI is written ([.github/workflows/ci.yml](.github/workflows/ci.yml): lint, types, tests, image build, Trivy, a smoke test) but has never run; its first run is the first push. No Helm or kind, no load test, and no database backup: `make nuke` deletes every data volume, and `make backup-evals` copies only the eval data ([DECISIONS](docs/DECISIONS.md)).
+- **Parked work.** CI is written ([.github/workflows/ci.yml](.github/workflows/ci.yml): lint, types, tests, image build, Trivy, a smoke test) and runs on every push to `main`. Its first run found two problems, both fixed: a test that only passed with a key file in the home folder, and a renamed Trivy action tag (now pinned by commit). No Helm or kind, no load test, and no database backup: `make nuke` deletes every data volume, and `make backup-evals` copies only the eval data ([DECISIONS](docs/DECISIONS.md)).
 
 ## Documentation
 

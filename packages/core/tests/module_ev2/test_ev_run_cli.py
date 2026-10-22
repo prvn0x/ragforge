@@ -161,7 +161,7 @@ class Harness:
         common = ["--root", str(self.root), "--key-file", str(self.key_file)]
         args = list(argv)
         # common options go after the (sub)subcommand, as argparse parents define them there
-        split = 2 if args[0] in ("baseline", "snapshot") else 1
+        split = 2 if args[0] in ("baseline", "snapshot", "tenant") else 1
         return main([*args[:split], *common, *args[split:]], self.env())
 
 

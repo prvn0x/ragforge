@@ -79,7 +79,7 @@ The workflow scripts that ran the parallel phases:
 
 | Item | Why it is parked | Source |
 |---|---|---|
-| CI pipeline (written, never run) | [.github/workflows/ci.yml](../.github/workflows/ci.yml) exists (lint, types, tests, image build, Trivy, a compose smoke test) but the repository is not on GitHub yet, so it has never run; expect fixes on its first run. Its actions are pinned by tag, not by commit SHA. Locally, `make check` runs the same checks | [adr/0018](adr/0018-ops-hardening-security-observability.md), scope table |
+| CI pipeline (running, young) | [.github/workflows/ci.yml](../.github/workflows/ci.yml) runs lint, types, tests, an image build, Trivy and a compose smoke test on every push to `main`. Its first run found a test that passed only with a key file in the home folder and a renamed Trivy tag; both are fixed. Trivy is pinned by commit SHA; the other actions are still pinned by tag. Locally, `make check` runs the same checks | [adr/0018](adr/0018-ops-hardening-security-observability.md), scope table |
 | Helm, kind, KEDA, NetworkPolicies, multi-arch images | Memory on a 16 GB laptop; they matter mainly for platform roles. Probes, the migration job and stateless services already exist | [adr/0018](adr/0018-ops-hardening-security-observability.md); DESIGN §13 |
 | Full database backup and restore drill | Notes re-sync from Notion. The data that cannot be rebuilt is the local eval data, which `make backup-evals` copies. There is no database backup today, and `make nuke` deletes all data volumes for good | [adr/0018](adr/0018-ops-hardening-security-observability.md); [Makefile](../Makefile) |
 | Load test | One user. The write-up uses the measured latency pass instead | [adr/0018](adr/0018-ops-hardening-security-observability.md) |

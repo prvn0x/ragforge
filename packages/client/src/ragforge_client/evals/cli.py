@@ -1290,7 +1290,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="gate only these kinds (e.g. retrieval for a retrieval change: no E-V floor)",
     )
 
-    baseline = sub.add_parser("baseline", parents=[common], help="baselines")
+    # The common options live on the ACTION parsers only (`tenant create --key-file K`). Also on
+    # the group level, argparse would let the action's default (None) silently overwrite a value
+    # given before the action (`tenant --key-file K create`), and the key lookup would fall back
+    # to whatever single key file it finds. Without them there, that order is a usage error.
+    baseline = sub.add_parser("baseline", help="baselines")
     baseline_sub = baseline.add_subparsers(dest="action", required=True)
     baseline_set = baseline_sub.add_parser("set", parents=[common], help="move a baseline")
     baseline_set.add_argument("run")
@@ -1301,13 +1305,13 @@ def build_parser() -> argparse.ArgumentParser:
     d3 = sub.add_parser("d3-build", parents=[common], help="build the private planted-error set")
     d3.add_argument("runs", nargs="+", help="v2 generator/application run files")
     d3.add_argument("--output", help="where to write (default: private/verifier.json)")
-    tenant = sub.add_parser("tenant", parents=[common], help="the paired eval tenant")
+    tenant = sub.add_parser("tenant", help="the paired eval tenant")
     tenant_sub = tenant.add_subparsers(dest="action", required=True)
     tenant_create = tenant_sub.add_parser(
         "create", parents=[common], help="provision it (your owner key); writes the eval key"
     )
     tenant_create.add_argument("--eval-key-file", help="where to write the eval key (0600)")
-    snapshot = sub.add_parser("snapshot", parents=[common], help="the frozen eval snapshot")
+    snapshot = sub.add_parser("snapshot", help="the frozen eval snapshot")
     snapshot_sub = snapshot.add_subparsers(dest="action", required=True)
     create = snapshot_sub.add_parser("create", parents=[common], help="copy a live collection")
     create.add_argument("--source-collection", required=True, type=UUID)
