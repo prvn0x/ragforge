@@ -1,0 +1,191 @@
+# RAGForge demo eval set (ADR-0017 D0). SYNTHETIC: about the invented "Acme Shipping" pages in
+# evals/demo/pages. Safe to commit. Builders and CI test against this set, never private data.
+schema_version = 2
+name = "demo"
+
+[[questions]]
+id = "kafka-ordering"
+split = "dev"
+question = "How does Acme keep all events of one shipment in order in Kafka?"
+pages = ["Kafka Basics at Acme Shipping"]
+relevance = { "file:kafka-basics.md" = 2, "file:design-tracking-service.md" = 1 }
+facts = [
+  { fact = "Records with the same key go to the same partition", match = ["same partition"] },
+  { fact = "Events are keyed by shipment_id", match = ["shipment_id"] },
+  { fact = "Ordering is only guaranteed within a partition", match = ["within one partition", "within a partition"] },
+]
+
+[[questions]]
+id = "kafka-idle-consumers"
+split = "dev"
+question = "What happens if a consumer group has more consumers than partitions?"
+pages = ["Kafka Basics at Acme Shipping"]
+relevance = { "file:kafka-basics.md" = 2 }
+facts = [{ fact = "The extra consumers sit idle", match = ["idle"] }]
+
+[[questions]]
+id = "producer-durability"
+split = "dev"
+question = "Which producer and topic settings stop Acme from losing acknowledged events?"
+pages = ["Kafka Producer Configuration"]
+relevance = { "file:kafka-producer-config.md" = 2 }
+facts = [
+  { fact = "acks=all", match = ["acks=all", "acks = all"] },
+  { fact = "min.insync.replicas=2", match = ["min.insync.replicas"] },
+]
+
+[[questions]]
+id = "producer-ordering"
+split = "dev"
+question = "Why can retries reorder Kafka records and how do you prevent it?"
+pages = ["Kafka Producer Configuration"]
+relevance = { "file:kafka-producer-config.md" = 2 }
+facts = [
+  { fact = "More than one in-flight request can reorder on retry", match = ["in flight", "in-flight"] },
+  { fact = "max.in.flight.requests.per.connection set to 1", match = ["max.in.flight.requests.per.connection"] },
+  { fact = "Idempotence keeps ordering with up to 5 in flight", match = ["idempotence"] },
+]
+
+[[questions]]
+id = "rebalance-triggers"
+split = "dev"
+question = "What makes a Kafka consumer group rebalance?"
+pages = ["Kafka Consumer Rebalance"]
+relevance = { "file:kafka-consumer-rebalance.md" = 2, "file:incident-kafka-lag.md" = 1 }
+facts = [
+  { fact = "A consumer joins or leaves", match = ["joins", "leaves"] },
+  { fact = "Missed heartbeats past session.timeout.ms", match = ["session.timeout.ms"] },
+  { fact = "Exceeding max.poll.interval.ms", match = ["max.poll.interval.ms"] },
+]
+
+[[questions]]
+id = "cooperative-rebalance"
+split = "dev"
+question = "Why is the cooperative sticky assignor better than eager rebalancing?"
+pages = ["Kafka Consumer Rebalance"]
+relevance = { "file:kafka-consumer-rebalance.md" = 2 }
+facts = [
+  { fact = "Eager revokes every partition and pauses the group", match = ["every partition", "pauses"] },
+  { fact = "Cooperative moves only the partitions that change owner", match = ["only the partitions"] },
+]
+
+[[questions]]
+id = "cache-stampede"
+split = "dev"
+question = "How does Acme avoid cache stampedes in Redis?"
+pages = ["Redis Caching"]
+relevance = { "file:redis-caching.md" = 2 }
+facts = [
+  { fact = "TTL jitter so keys don't expire together", match = ["jitter"] },
+  { fact = "A short lock on hot keys so one request reloads", match = ["lock"] },
+]
+
+[[questions]]
+id = "redis-aof-loss"
+split = "dev"
+question = "With AOF and appendfsync everysec, how much data can Redis lose on a crash?"
+pages = ["Redis Persistence"]
+relevance = { "file:redis-persistence.md" = 2 }
+facts = [{ fact = "About one second of writes", match = ["one second", "1 second"] }]
+
+[[questions]]
+id = "partial-index"
+split = "dev"
+question = "When does Acme use a partial index in Postgres?"
+pages = ["Postgres Indexing"]
+relevance = { "file:postgres-indexing.md" = 2 }
+facts = [
+  { fact = "It covers only rows matching a condition", match = ["matching a condition", "only the rows"] },
+  { fact = "status = in_transit, about 3 percent of rows", match = ["in_transit", "3 percent"] },
+]
+
+[[questions]]
+id = "rate-limit-per-key"
+split = "dev"
+question = "Why are API rate limits per key instead of per IP?"
+pages = ["API Rate Limiting"]
+relevance = { "file:api-rate-limiting.md" = 2 }
+facts = [{ fact = "Many customers share one corporate NAT address", match = ["NAT"] }]
+
+[[questions]]
+id = "outbox-dual-write"
+split = "dev"
+question = "What problem does the outbox pattern solve and what guarantee does it give?"
+pages = ["Outbox Pattern"]
+relevance = { "file:outbox-pattern.md" = 2 }
+need = "any"
+facts = [
+  { fact = "The dual write between Postgres and Kafka", match = ["dual write"] },
+  { fact = "Business row and outbox row in one transaction", match = ["one database transaction", "same transaction", "one transaction"] },
+  { fact = "At least once delivery, so consumers must be idempotent", match = ["at least once"] },
+]
+
+[[questions]]
+id = "tracking-lag-incident"
+split = "dev"
+question = "What caused the shipment tracking lag incident and how was it fixed?"
+pages = ["Incident: Shipment Tracking Lag (2025)"]
+relevance = { "file:incident-kafka-lag.md" = 2, "file:kafka-consumer-rebalance.md" = 1 }
+need = "any"
+facts = [
+  { fact = "A slow geocoding call inside the poll loop", match = ["geocoding"] },
+  { fact = "Exceeded max.poll.interval.ms and caused rebalances", match = ["max.poll.interval.ms"] },
+  { fact = "Moved calls to a bounded worker pool with a timeout", match = ["worker pool"] },
+]
+
+[[questions]]
+id = "tracking-design-hot-partition"
+split = "dev"
+question = "What is the downside of keying tracking updates by shipment and how is a Redis loss handled?"
+pages = ["Design: Shipment Tracking Service"]
+relevance = { "file:design-tracking-service.md" = 2, "file:kafka-basics.md" = 1 }
+need = "all"
+facts = [
+  { fact = "Hot partitions for very busy shipments", match = ["hot partition"] },
+  { fact = "Rebuild Redis by replaying the last hour of the topic", match = ["replay"] },
+]
+
+[[questions]]
+id = "unanswerable-graphql"
+split = "dev"
+question = "How does Acme version its GraphQL schema?"
+answerable = false
+
+[[questions]]
+id = "unanswerable-k8s-hpa"
+split = "dev"
+question = "What CPU target does Acme use for the Kubernetes horizontal pod autoscaler?"
+answerable = false
+
+[[questions]]
+id = "unanswerable-oncall"
+split = "dev"
+question = "Who is on call for the payments team this week?"
+answerable = false
+
+[[questions]]
+id = "unanswerable-salary"
+split = "dev"
+question = "What is the salary band for a senior engineer at Acme?"
+answerable = false
+
+[[questions]]
+id = "nearmiss-redis-cluster"
+split = "dev"
+question = "How does Acme shard Redis with Redis Cluster hash slots?"
+answerable = false
+near_miss = true
+
+[[questions]]
+id = "nearmiss-kafka-transactions"
+split = "dev"
+question = "How does Acme use Kafka transactions for exactly-once processing?"
+answerable = false
+near_miss = true
+
+[[questions]]
+id = "nearmiss-postgres-replication"
+split = "dev"
+question = "How does Acme configure Postgres streaming replication?"
+answerable = false
+near_miss = true

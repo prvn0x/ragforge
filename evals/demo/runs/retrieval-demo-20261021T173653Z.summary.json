@@ -1,0 +1,271 @@
+{
+  "schema_version": 2,
+  "run_id": "retrieval-demo-20261021T173653Z",
+  "eval_kind": "retrieval",
+  "header_digest": "8602792ab46b0f7492faf08b276adb60073ff4205117e7cefa1af872f9e916ba",
+  "metrics": [
+    {
+      "name": "retrieval.fused.hit@10",
+      "value": 1.0,
+      "ci_low": 0.7575059933447593,
+      "ci_high": 1.0,
+      "n": 12,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.fused.hit@5",
+      "value": 1.0,
+      "ci_low": 0.7575059933447593,
+      "ci_high": 1.0,
+      "n": 12,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.fused.mrr",
+      "value": 0.9166666666666666,
+      "ci_low": 0.7916666666666666,
+      "ci_high": 1.0,
+      "n": 12,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "bootstrap over questions"
+    },
+    {
+      "name": "retrieval.fused.ndcg@10",
+      "value": 0.9249965081060515,
+      "ci_low": 0.8456138804086171,
+      "ci_high": 0.9866494144186395,
+      "n": 13,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "bootstrap over questions"
+    },
+    {
+      "name": "retrieval.fused.recall@10",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 1,
+      "method": "point",
+      "trusted": null,
+      "note": "bootstrap degenerate (every resample equal): no interval"
+    },
+    {
+      "name": "retrieval.fused.recall@20",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 13,
+      "method": "point",
+      "trusted": null,
+      "note": "bootstrap over questions; bootstrap degenerate (every resample equal): no interval"
+    },
+    {
+      "name": "retrieval.fused.recall@5",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 1,
+      "method": "point",
+      "trusted": null,
+      "note": "bootstrap degenerate (every resample equal): no interval"
+    },
+    {
+      "name": "retrieval.keyword.hit@10",
+      "value": 1.0,
+      "ci_low": 0.7575059933447593,
+      "ci_high": 1.0,
+      "n": 12,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.keyword.hit@5",
+      "value": 1.0,
+      "ci_low": 0.7575059933447593,
+      "ci_high": 1.0,
+      "n": 12,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.keyword.mrr",
+      "value": 0.9583333333333334,
+      "ci_low": 0.875,
+      "ci_high": 1.0,
+      "n": 12,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "bootstrap over questions"
+    },
+    {
+      "name": "retrieval.keyword.ndcg@10",
+      "value": 0.9475248974341104,
+      "ci_low": 0.8825491878157538,
+      "ci_high": 0.9920552940482126,
+      "n": 13,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "bootstrap over questions"
+    },
+    {
+      "name": "retrieval.keyword.recall@10",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 1,
+      "method": "point",
+      "trusted": null,
+      "note": "bootstrap degenerate (every resample equal): no interval"
+    },
+    {
+      "name": "retrieval.keyword.recall@5",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 1,
+      "method": "point",
+      "trusted": null,
+      "note": "bootstrap degenerate (every resample equal): no interval"
+    },
+    {
+      "name": "retrieval.reranked.hit@10",
+      "value": 1.0,
+      "ci_low": 0.7575059933447593,
+      "ci_high": 1.0,
+      "n": 12,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.reranked.hit@5",
+      "value": 1.0,
+      "ci_low": 0.7575059933447593,
+      "ci_high": 1.0,
+      "n": 12,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.reranked.mrr",
+      "value": 0.9583333333333334,
+      "ci_low": 0.875,
+      "ci_high": 1.0,
+      "n": 12,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "bootstrap over questions"
+    },
+    {
+      "name": "retrieval.reranked.ndcg@10",
+      "value": 0.9476677242166642,
+      "ci_low": 0.8853400606609889,
+      "ci_high": 0.9899836063845212,
+      "n": 13,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "bootstrap over questions"
+    },
+    {
+      "name": "retrieval.reranked.recall@10",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 1,
+      "method": "point",
+      "trusted": null,
+      "note": "bootstrap degenerate (every resample equal): no interval"
+    },
+    {
+      "name": "retrieval.reranked.recall@5",
+      "value": 0.5,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 1,
+      "method": "point",
+      "trusted": null,
+      "note": "bootstrap degenerate (every resample equal): no interval"
+    },
+    {
+      "name": "retrieval.unanswerable.below_tau",
+      "value": null,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 0,
+      "method": "point",
+      "trusted": null,
+      "note": "no tau in header"
+    },
+    {
+      "name": "retrieval.vector.hit@10",
+      "value": 1.0,
+      "ci_low": 0.7575059933447593,
+      "ci_high": 1.0,
+      "n": 12,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.vector.hit@5",
+      "value": 1.0,
+      "ci_low": 0.7575059933447593,
+      "ci_high": 1.0,
+      "n": 12,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.vector.mrr",
+      "value": 0.9583333333333334,
+      "ci_low": 0.875,
+      "ci_high": 1.0,
+      "n": 12,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "bootstrap over questions"
+    },
+    {
+      "name": "retrieval.vector.ndcg@10",
+      "value": 0.9327519851728258,
+      "ci_low": 0.8583052457169286,
+      "ci_high": 0.988632238317757,
+      "n": 13,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "bootstrap over questions"
+    },
+    {
+      "name": "retrieval.vector.recall@10",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 1,
+      "method": "point",
+      "trusted": null,
+      "note": "bootstrap degenerate (every resample equal): no interval"
+    },
+    {
+      "name": "retrieval.vector.recall@5",
+      "value": 0.5,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 1,
+      "method": "point",
+      "trusted": null,
+      "note": "bootstrap degenerate (every resample equal): no interval"
+    }
+  ],
+  "stale_items": 0,
+  "errors_ours": 0,
+  "errors_transient": 0
+}

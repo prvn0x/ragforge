@@ -1,0 +1,4 @@
+# Read by `streamlit run` launched from the repo root (make ui, or by hand): no usage telemetry
+# leaves the machine whichever way the UI is started (docs/SECURITY.md, silent egress).
+[browser]
+gatherUsageStats = false

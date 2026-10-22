@@ -1,0 +1,13 @@
+{
+  "chat_model": "gemini-3.5-flash-lite",
+  "dataset": {
+    "name": "demo",
+    "splits": [
+      "dev"
+    ]
+  },
+  "embed_model": null,
+  "rerank_model": null,
+  "started_at": "2026-10-21T17:43:36.153440Z",
+  "verifier_model": null
+}

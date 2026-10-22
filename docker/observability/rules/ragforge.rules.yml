@@ -1,0 +1,288 @@
+# RAGForge alerting rules (ADR-0018 revision 2, R2-4). Prometheus evaluates them; Grafana only
+# lists them (the board's alert list panel and Grafana's Alerting > Alert rules page), and nothing
+# is sent anywhere: nobody sees an alert unless one of those Grafana pages is open (the documented
+# honest limit). Prometheus publishes no host port, so its own /alerts page is reachable only from
+# inside the container (docker compose exec prometheus wget -qO- http://127.0.0.1:9090/api/v1/alerts).
+#
+# Design rules, so every alert stays sound at ONE user:
+# - Ratio alerts (latency, 5xx) need THREE things in the SAME 6 h window: the ratio over budget,
+#   at least 3 bad events, and at least 20 events in all. Why these numbers (ADR-0018, "Final
+#   review fixes"): one owner makes a few chat turns an hour, so a 1 h window with a guard of 5
+#   let ONE slow turn out of 5..19 (5-20%) fire a "p95" alert. A ratio over fewer than 20 events
+#   cannot even express a 5% budget (1 of 20 is already 5%), so 20 is the smallest volume at which
+#   "p95" means anything; 3 bad events means one stray slow turn or failed request (a cold model,
+#   one provider hiccup) never pages on its own, while a real regression (3 or more) still does.
+#   6 h is the window in which one person's normal use reaches 20 events; the cost is that an
+#   alert clears up to 6 h after the cause is fixed.
+# - Latency uses the fraction of turns above a threshold that sits exactly on a bucket edge
+#   (catalog.TURN_BUCKETS has 5.0, 8.0 and 12.0). "p95 > 8 s" is exactly "more than 5% of turns
+#   took longer than 8 s", with no histogram_quantile interpolation inside a wide bucket.
+# - "Any occurrence" alerts on counters also catch a series that is BORN inside the window: a
+#   labelled counter only appears at its first event, and increase() never sees that first step
+#   (no earlier sample). `x unless x offset W` is the series that did not exist W ago; its value
+#   is the whole count since birth. It is trusted only for targets Prometheus already scraped W
+#   ago (`and on (job, instance) (up offset W)`): on a fresh `make obs-up` EVERY series looks
+#   newborn, and yesterday's count must not fire as a new event.
+# - Owner signals are surface="chat" only, so eval and demo traffic never moves them.
+groups:
+  - name: ragforge.alerts
+    rules:
+      # ------------------------------------------------------------------ answers
+      # The hosted threshold is the 8 s bucket edge, NOT the 5 s DESIGN §2 SLO: the measured
+      # hosted p95 on the demo is about 6.6 s, so the 5 s SLO is not met today and an alert on
+      # it would fire on every normal day (noise, not news). 8 s is the next bucket edge above
+      # the measured baseline: it fires on a regression, and the board still shows the 5 s SLO.
+      - alert: RagforgeChatLatencyHostedHigh
+        expr: |
+          (
+            sum by (provider) (increase(ragforge_chat_turn_duration_seconds_count{surface="chat", provider!="ollama"}[6h]))
+            -
+            sum by (provider) (increase(ragforge_chat_turn_duration_seconds_bucket{surface="chat", provider!="ollama", le="8.0"}[6h]))
+          ) >= 3
+          and
+          (
+            1 - (
+              sum by (provider) (increase(ragforge_chat_turn_duration_seconds_bucket{surface="chat", provider!="ollama", le="8.0"}[6h]))
+              /
+              sum by (provider) (increase(ragforge_chat_turn_duration_seconds_count{surface="chat", provider!="ollama"}[6h]))
+            )
+          ) > 0.05
+          and
+          sum by (provider) (increase(ragforge_chat_turn_duration_seconds_count{surface="chat", provider!="ollama"}[6h])) >= 20
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Chat p95 above 8 s on hosted provider {{ $labels.provider }}"
+          description: >-
+            More than 5% of owner chat turns on {{ $labels.provider }} took over 8 s in the last
+            6 h (at least 3 such turns and 20 turns in all), for 30 min. The DESIGN §2 hosted
+            SLO is 5 s, which is not met today (measured p95 about 6.6 s); this fires on a
+            regression past that baseline. Check the Models row: if one prompt's latency rose,
+            look at that provider's status page and at rate-limit retries; if retrieval is slow,
+            check the Retrieval row and Postgres.
+
+      - alert: RagforgeChatLatencyLocalHigh
+        expr: |
+          (
+            sum by (provider) (increase(ragforge_chat_turn_duration_seconds_count{surface="chat", provider="ollama"}[6h]))
+            -
+            sum by (provider) (increase(ragforge_chat_turn_duration_seconds_bucket{surface="chat", provider="ollama", le="12.0"}[6h]))
+          ) >= 3
+          and
+          (
+            1 - (
+              sum by (provider) (increase(ragforge_chat_turn_duration_seconds_bucket{surface="chat", provider="ollama", le="12.0"}[6h]))
+              /
+              sum by (provider) (increase(ragforge_chat_turn_duration_seconds_count{surface="chat", provider="ollama"}[6h]))
+            )
+          ) > 0.05
+          and
+          sum by (provider) (increase(ragforge_chat_turn_duration_seconds_count{surface="chat", provider="ollama"}[6h])) >= 20
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Chat p95 above 12 s on local provider {{ $labels.provider }}"
+          description: >-
+            More than 5% of owner chat turns on local Ollama took over 12 s in the last 6 h (at
+            least 3 such turns and 20 turns in all; DESIGN §2 local 3B SLO), for 30 min. Usually a model reload: check that
+            OLLAMA_MAX_LOADED_MODELS >= 2 (make doctor), that nothing else holds the GPU, and
+            that the chat model is the 3B one.
+
+      - alert: RagforgeVerifiedShareLow
+        expr: |
+          (
+            (sum(increase(ragforge_verification_total{surface="chat", status="verified"}[6h])) or vector(0))
+            /
+            sum(increase(ragforge_verification_total{surface="chat"}[6h]))
+          ) < 0.5
+          and
+          sum(increase(ragforge_verification_total{surface="chat"}[6h])) >= 30
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Under half of answered owner turns were verified (6 h)"
+          description: >-
+            Fewer than 50% of answered owner chat turns were verified over 6 h (abstain, refusal
+            and error turns are not counted; at least 30 answered turns, i.e. 5 per hour). A
+            drift signal: check the verification mix and flagged-claim reasons on the board,
+            then whether the chat model or prompt version changed, and run make eval-gate.
+
+      # ------------------------------------------------------------------ models
+      - alert: RagforgeLlmQuotaExhausted
+        expr: |
+          sum by (provider) (
+            (
+              (
+                ragforge_llm_requests_total{outcome="quota_exhausted"}
+                unless
+                ragforge_llm_requests_total{outcome="quota_exhausted"} offset 10m
+              )
+              and on (job, instance)
+              (up offset 10m)
+            )
+            or
+            increase(ragforge_llm_requests_total{outcome="quota_exhausted"}[10m])
+          ) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.provider }} quota exhausted"
+          description: >-
+            A model call to {{ $labels.provider }} was refused for quota in the last 10 min, so
+            chat and verification fail until the quota resets. Check the provider console's
+            quota page, or switch to local Ollama with make setup.
+
+      - alert: RagforgeLlmRateLimited
+        expr: |
+          sum by (provider) (
+            (
+              (
+                ragforge_llm_requests_total{outcome="rate_limited"}
+                unless
+                ragforge_llm_requests_total{outcome="rate_limited"} offset 10m
+              )
+              and on (job, instance)
+              (up offset 10m)
+            )
+            or
+            increase(ragforge_llm_requests_total{outcome="rate_limited"}[10m])
+          ) > 5
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.provider }} rate limiting (over 5 in 10 min)"
+          description: >-
+            More than 5 model calls to {{ $labels.provider }} were rate limited (429) in 10 min.
+            Check the Models row for which prompt drives the calls (an eval run or the extras
+            path are the usual suspects) and slow it down; persistent 429s mean the plan's RPM
+            is too low for this use.
+
+      # ------------------------------------------------------------------ HTTP
+      - alert: RagforgeHttp5xxHigh
+        # Same guards as the latency alerts (see the header): one failed request out of 20..49
+        # is already over 2%, so the 3-failure floor is what keeps one stray 5xx quiet.
+        expr: |
+          sum(increase(ragforge_http_requests_total{status_class="5xx"}[6h])) >= 3
+          and
+          (
+            sum(increase(ragforge_http_requests_total{status_class="5xx"}[6h]))
+            /
+            sum(increase(ragforge_http_requests_total{status_class!="disconnected"}[6h]))
+          ) > 0.02
+          and
+          sum(increase(ragforge_http_requests_total{status_class!="disconnected"}[6h])) >= 20
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API 5xx above 2% (6 h), for 15 min"
+          description: >-
+            More than 2% of API requests answered 5xx over the last 6 h (at least 3 failures and
+            20 requests in all; client disconnects are not counted). Run make logs SERVICE=api and look for the request ids of the
+            failures; the HTTP panel shows which route.
+
+      # ------------------------------------------------------------------ freshness & jobs
+      - alert: RagforgeSyncStale
+        expr: max by (connector_kind) (ragforge_sync_oldest_success_age_seconds) > 1800
+        # Waking the laptop from sleep makes every connector look stale at once; the poller
+        # catches up within one poll interval (5 min), so only a sync stale for 15 more minutes
+        # is real.
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.connector_kind }} sync stale for over 30 min"
+          description: >-
+            The stalest enabled {{ $labels.connector_kind }} connector has not synced
+            successfully for over 30 min. Check make logs SERVICE=worker for auth errors (an
+            expired or revoked Notion token) or 429 storms, and the Notion requests panel for the
+            status mix.
+
+      - alert: RagforgeInteractiveQueueStuck
+        # AND a READY job at that priority: a job waiting out a Notion 429 retry_after is
+        # queued but not claimable, and must not page (integrator fix of review P1)
+        expr: >-
+          max by (priority) (ragforge_jobs_oldest_queued_age_seconds{priority=~"interactive|webhook"}) > 120
+          and on (priority)
+          max by (priority) (ragforge_jobs_ready{priority=~"interactive|webhook"}) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.priority }} jobs waiting over 2 min"
+          description: >-
+            A READY {{ $labels.priority }} job has gone unclaimed and the oldest queued one has
+            waited over 120 s for 5 min (DESIGN §2: interactive/webhook wait is bounded; backfill
+            and jobs in retry backoff are exempt). Check the worker is up
+            and claiming (make ps, make logs SERVICE=worker) and whether expired leases are
+            piling up on the Jobs row.
+
+      - alert: RagforgeDeadJobsRising
+        # Against the window's LOWEST value, not the value 15 min ago: a requeue (1 -> 0) then a
+        # new death (0 -> 1) inside the window ends where it started, and a two-point
+        # comparison would miss that new dead job. A count that only falls or holds is quiet.
+        expr: max(ragforge_jobs_dead) > min_over_time(max(ragforge_jobs_dead)[15m:1m])
+        labels:
+          severity: warning
+        # The gauge counts deaths of the last 24 h in rf.jobs AND rf.jobs_history (migration
+        # 0014): the upkeep archives a dead job after 5 min, and it must stay counted. A death
+        # leaving the 24 h window is a fall, so it is quiet.
+        annotations:
+          summary: "New dead jobs in the last 15 min"
+          description: >-
+            The number of jobs that went dead (retries exhausted) in the last 24 h rose in the
+            last 15 min. Find them with make psql: rf.jobs_history (where the upkeep moves a
+            finished job after 5 min) and rf.jobs, status dead, newest finished_at first; read
+            last_error and fix the cause before requeueing, or they die again.
+
+      # ------------------------------------------------------------------ scrape health
+      - alert: RagforgeTargetDown
+        expr: up{job=~"ragforge-api|ragforge-worker"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} metrics target {{ $labels.instance }} is down"
+          description: >-
+            Prometheus cannot scrape {{ $labels.instance }} for 2 min, so every alert on its
+            in-process metrics is blind (a failed DB-gauge read is a separate alert,
+            RagforgeDbGaugesMissing, because the scrape itself still succeeds). Run make ps; if
+            the service is up, check that its metrics port is listening on 0.0.0.0 inside the
+            container.
+
+      - alert: RagforgeDbGaugesMissing
+        # The scrape-time DB read (R2-2) fails SOFT: the gauges are simply left out, /metrics
+        # still answers 200 and `up` stays 1, so the stale-sync, queue-age and dead-job alerts
+        # above go blind with nothing else firing. The queue gauges are emitted on EVERY good
+        # read (zero-filled for every priority), so their absence while the API scrapes fine
+        # means the read failed. (Freshness cannot be judged this way: no connectors also
+        # means no series. See docs/handoff/OBS-STACK.md for the collect-errors rule.)
+        expr: absent(ragforge_jobs_dead) and on () (up{job="ragforge-api"} == 1)
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "DB-derived gauges missing: queue, dead-job and sync alerts are blind"
+          description: >-
+            The API is scraped but has served no queue gauges for 10 min: its rf_metrics read
+            of rf.queue_stats is failing, so RagforgeSyncStale, RagforgeInteractiveQueueStuck
+            and RagforgeDeadJobsRising cannot fire. Run make logs SERVICE=api and look for
+            metrics_collect_failed (its error type says which): Postgres down, a wrong
+            rf_metrics password, migration 0013's view or 0014's function or their grants
+            missing, or the 5 s statement timeout.
+
+      - alert: RagforgeWorkerTargetsMissing
+        # DNS discovery drops a stopped worker's A record, so its `up` series disappears
+        # instead of reading 0: TargetDown alone would never fire for a dead worker.
+        expr: absent(up{job="ragforge-worker"})
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No worker metrics target discovered"
+          description: >-
+            DNS discovery has found no worker for 5 min: no worker container is running, so
+            nothing syncs or runs jobs. Run make ps and make logs SERVICE=worker, then make up.

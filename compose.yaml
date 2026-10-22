@@ -1,0 +1,286 @@
+# RAGForge local stack. `make up` runs scripts/bootstrap.sh first (creates .env) and then
+# `docker compose up --wait`. Each service receives ONLY the secrets it needs.
+name: ragforge
+
+x-server: &server
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+    target: server
+  image: ragforge/server:dev
+  read_only: true
+  # Size-capped: /tmp is RAM-backed, and FastAPI spools multipart uploads there before the
+  # route's own cap applies. Without a cap one large request could exhaust the VM.
+  tmpfs: ["/tmp:size=256m"]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  # No extra_hosts: Docker Desktop and Rancher Desktop resolve host.docker.internal to the Mac.
+  # (A host-gateway mapping would point at the Linux VM instead and break host Ollama.)
+
+x-db-env: &db-env
+  RAGFORGE_DB_HOST: postgres
+  RAGFORGE_DB_PORT: "5432"
+  RAGFORGE_DB_NAME: ragforge
+  RAGFORGE_LOG_LEVEL: ${RAGFORGE_LOG_LEVEL:-INFO}
+
+# Chat model provider (`make setup`). ONLY api and worker merge this block: no other service may
+# see the Gemini key (a test parses this file to enforce it). Never add `env_file:` to a service,
+# it would hand that service every secret in .env. RAGFORGE_GEMINI_MODEL's default equals the
+# Settings.gemini_model default in config.py (a G2 test pins them equal): compose always passes
+# the variable, so an empty value would otherwise override the settings default with "".
+x-llm-env: &llm-env
+  RAGFORGE_LLM_PROVIDER: ${RAGFORGE_LLM_PROVIDER:-ollama}
+  RAGFORGE_GEMINI_API_KEY: ${RAGFORGE_GEMINI_API_KEY:-}
+  RAGFORGE_GEMINI_MODEL: ${RAGFORGE_GEMINI_MODEL:-gemini-3.5-flash-lite}
+  RAGFORGE_GEMINI_THINKING_BUDGET: ${RAGFORGE_GEMINI_THINKING_BUDGET:-0}
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${RAGFORGE_DB_SUPERUSER_PASSWORD:?run make env}
+      POSTGRES_DB: ragforge
+    volumes: [pgdata:/var/lib/postgresql/data]
+    shm_size: 256mb
+    # Connection budget (per-replica math in packages/core/src/ragforge_core/config.py): the
+    # default 100 leaves no headroom once api + worker pools, LISTEN connections and one-shots add up.
+    command: ["postgres", "-c", "max_connections=200"]
+    # Not published on the host (no collision with a local Postgres). Use `make psql`.
+    healthcheck:
+      # Over TCP: the image's temporary init server listens on the unix socket only.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d ragforge && psql -h 127.0.0.1 -U postgres -d ragforge -tAc 'SELECT 1' >/dev/null"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    restart: unless-stopped
+
+  db-bootstrap:  # one-shot, superuser: roles, schemas, extensions (ADR-0013)
+    <<: *server
+    command: ["ragforge-db-bootstrap"]
+    environment:
+      <<: *db-env
+      RAGFORGE_DB_SUPERUSER_PASSWORD: ${RAGFORGE_DB_SUPERUSER_PASSWORD}
+      RAGFORGE_DB_MIGRATOR_PASSWORD: ${RAGFORGE_DB_MIGRATOR_PASSWORD}
+      RAGFORGE_DB_API_PASSWORD: ${RAGFORGE_DB_API_PASSWORD}
+      RAGFORGE_DB_WORKER_PASSWORD: ${RAGFORGE_DB_WORKER_PASSWORD}
+      RAGFORGE_DB_METRICS_PASSWORD: ${RAGFORGE_DB_METRICS_PASSWORD}
+      RAGFORGE_DB_BACKUP_PASSWORD: ${RAGFORGE_DB_BACKUP_PASSWORD}
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: "no"
+    healthcheck: {disable: true}
+
+  migrate:  # one-shot, rf_migrator -> SET ROLE rf_system
+    <<: *server
+    command: ["ragforge-migrate"]
+    environment:
+      <<: *db-env
+      RAGFORGE_DB_MIGRATOR_PASSWORD: ${RAGFORGE_DB_MIGRATOR_PASSWORD}
+    depends_on:
+      db-bootstrap: {condition: service_completed_successfully}
+    restart: "no"
+    healthcheck: {disable: true}
+
+  index:  # one-shot, best-effort HNSW build per space; NOTHING depends on it (apps/index)
+    # Off the deploy's critical path: a build may wait on older snapshots (a pg_dump, a
+    # wraparound vacuum) up to its lock bound, and exact search serves a space meanwhile.
+    <<: *server
+    command: ["ragforge-index"]
+    environment:
+      <<: *db-env
+      RAGFORGE_DB_MIGRATOR_PASSWORD: ${RAGFORGE_DB_MIGRATOR_PASSWORD}
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    restart: "no"
+    healthcheck: {disable: true}
+
+  api:
+    <<: *server
+    command: ["ragforge-api"]
+    environment:
+      <<: [*db-env, *llm-env]
+      RAGFORGE_DB_API_PASSWORD: ${RAGFORGE_DB_API_PASSWORD}
+      RAGFORGE_KEK: ${RAGFORGE_KEK}
+      RAGFORGE_OLLAMA_BASE_URL: ${RAGFORGE_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      RAGFORGE_CHAT_MODEL: ${RAGFORGE_CHAT_MODEL:-llama3.2:3b}
+      # Answer-path knobs measured by the Phase 2b eval arms; defaults mirror config.py.
+      RAGFORGE_AGENT_MAX_TOOL_ROUNDS: ${RAGFORGE_AGENT_MAX_TOOL_ROUNDS:-3}
+      RAGFORGE_AGENT_TOOL_MODE: ${RAGFORGE_AGENT_TOOL_MODE:-actions}
+      RAGFORGE_AGENT_STRICT_CITATIONS: ${RAGFORGE_AGENT_STRICT_CITATIONS:-false}
+      RAGFORGE_AGENT_VERIFIER_TRUSTED: ${RAGFORGE_AGENT_VERIFIER_TRUSTED:-true}
+      RAGFORGE_AGENT_EXTRAS: ${RAGFORGE_AGENT_EXTRAS:-true}
+      # ADR-0017: the /v1/eval surface (eval tenant + eval key only). On in this dev stack; the
+      # application default stays off.
+      RAGFORGE_EVAL_API: ${RAGFORGE_EVAL_API:-true}
+      # ADR-0018: scrape-time DB gauges (rf_metrics: two aggregate views only)
+      RAGFORGE_DB_METRICS_PASSWORD: ${RAGFORGE_DB_METRICS_PASSWORD}
+      RAGFORGE_METRICS_ADDR: "0.0.0.0"  # /metrics on :9101, compose network only (no ports: entry)
+    volumes: [uploads:/data/uploads]
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys,urllib.request as u; sys.exit(0 if u.urlopen('http://127.0.0.1:8000/readyz', timeout=2).status == 200 else 1)"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    # uvicorn's graceful shutdown is 25 s (timeout_graceful_shutdown in apps/api/main.py), then
+    # the lifespan closes pools and the job feed; SIGKILL must land after both. Coupled to that
+    # constant by this comment only: change them together.
+    stop_grace_period: 35s
+    restart: unless-stopped
+
+  worker:
+    <<: *server
+    command: ["ragforge-worker"]
+    environment:
+      <<: [*db-env, *llm-env]
+      RAGFORGE_DB_WORKER_PASSWORD: ${RAGFORGE_DB_WORKER_PASSWORD}
+      RAGFORGE_KEK: ${RAGFORGE_KEK}
+      RAGFORGE_OLLAMA_BASE_URL: ${RAGFORGE_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      RAGFORGE_CHAT_MODEL: ${RAGFORGE_CHAT_MODEL:-llama3.2:3b}
+      RAGFORGE_WORKER_CONCURRENCY: ${RAGFORGE_WORKER_CONCURRENCY:-4}
+      RAGFORGE_SYNC_POLL_INTERVAL_S: ${RAGFORGE_SYNC_POLL_INTERVAL_S:-300}
+      RAGFORGE_METRICS_ADDR: "0.0.0.0"  # /metrics on :9102, compose network only (no ports: entry)
+    volumes: [uploads:/data/uploads]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      # Liveness = the claim loop touched the file (apps/worker/main.py). 60 s, not 30 s: a
+      # SIGTERM drain (25 s) plus lease release (5 s) stops the loop's touches and must never
+      # read as a dead worker. Upkeep and the connector scheduler are deliberately not part of it.
+      test: ["CMD", "python", "-c", "import os,sys,time; sys.exit(0 if time.time() - os.path.getmtime('/tmp/worker-heartbeat') < 60 else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+    # The worker drains 25 s, then releases leases (<= 5 s): WorkerConfig.shutdown_grace_s and
+    # release_timeout_s in services/jobs/runtime.py. SIGKILL must land after both, or jobs wait
+    # out the 60 s lease (handoff A). Coupled by this comment only: change them together, and
+    # keep k8s terminationGracePeriodSeconds >= 35.
+    stop_grace_period: 35s
+    restart: unless-stopped
+
+  # -------------------------------------------------------------- profile: ollama
+  # Linux (and macOS without a host Ollama): containerized runtime, no host port (ADR-0004).
+  ollama:
+    profiles: [ollama]
+    image: ollama/ollama:0.18.2@sha256:5a5d014aa774f78ebe1340c0d4afc2e35afc12a2c3b34c84e71f78ea20af4ba3
+    volumes: [ollama:/root/.ollama]
+    environment:
+      OLLAMA_KEEP_ALIVE: 30m
+      OLLAMA_MAX_LOADED_MODELS: "2"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      retries: 30
+    restart: unless-stopped
+
+  # ---- profile: obs (ADR-0018; merged verbatim from docker/observability/compose.obs.snippet.yaml)
+  # -------------------------------------------------------------- profile: obs
+  prometheus:
+    profiles: [obs]
+    # v3.15.0 (2026-09-25). Index digest checked against the registry on 2026-10-22 with
+    # `docker buildx imagetools inspect` (linux/arm64 + amd64). The OBS-STACK promtool tests run
+    # this exact image, so the rules are tested on the binary that evaluates them.
+    image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+    # The full command line, so nothing is inherited: NO --web.enable-admin-api and NO
+    # --web.enable-lifecycle (no TSDB delete/snapshot, no remote shutdown or reload).
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=512MB
+      - --web.listen-address=:9090
+    volumes:
+      - ./docker/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/observability/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    # NO `ports:` entry: Prometheus is reachable only on the compose network (Grafana's proxy).
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  grafana:
+    profiles: [obs]
+    # 13.2.3 (2026-09-29). Index digest checked against the registry on 2026-10-22 with
+    # `docker buildx imagetools inspect` (linux/arm64 + amd64).
+    image: grafana/grafana:13.2.3@sha256:b28bae15e219c998fb0e0424ed724930cc61b1f61fb404d47c862f9a23f9e572
+    environment:
+      # Admin password: generated by scripts/bootstrap.sh like the DB passwords. Grafana applies
+      # it only when it first creates its database (grafana-data volume): rotating it later is
+      # `docker compose exec grafana grafana cli admin reset-admin-password` (hidden input).
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${RAGFORGE_GRAFANA_ADMIN_PASSWORD:?run make env}
+      # Served on localhost only; enforce_domain redirects any other Host header (DNS rebinding).
+      GF_SERVER_DOMAIN: localhost
+      GF_SERVER_ROOT_URL: http://localhost:3000/
+      GF_SERVER_ENFORCE_DOMAIN: "true"
+      # No phone-home: nothing leaves the machine (ADR-0018: alert delivery is Grafana's UI only).
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_ANALYTICS_FEEDBACK_LINKS_ENABLED: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_SNAPSHOTS_EXTERNAL_ENABLED: "false"
+      # The plugin signing-key sync is a background service, NOT covered by any analytics flag:
+      # it GETs <grafana_com.api_url>/plugins/ci/keys and repeats every 10 days. The bundled key
+      # still verifies the core plugins. Preinstall is empty today; pinned off so a later
+      # default cannot start downloading plugins.
+      GF_PLUGINS_PUBLIC_KEY_RETRIEVAL_DISABLED: "true"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      # Fail closed: any grafana.com call left (or added by an upgrade) hits the discard port on
+      # the container's own loopback and is refused at once, instead of leaving the machine.
+      GF_GRAFANA_COM_URL: http://127.0.0.1:9
+      GF_GRAFANA_COM_API_URL: http://127.0.0.1:9/api
+      GF_GRAFANA_NET_URL: http://127.0.0.1:9
+      # Grafana's own /metrics is served BEFORE auth; nothing scrapes it, so do not serve it.
+      GF_METRICS_ENABLED: "false"
+      # One local admin: no anonymous viewers, no self sign-up, no extra orgs, no plugin installs.
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_ALLOW_ORG_CREATE: "false"
+      GF_PLUGINS_PLUGIN_ADMIN_ENABLED: "false"
+      GF_SECURITY_COOKIE_SAMESITE: strict
+      GF_SECURITY_CONTENT_SECURITY_POLICY: "true"
+      # The root filesystem is read-only, so no log file under /var/log/grafana: stdout only
+      # (make logs SERVICE=grafana).
+      GF_LOG_MODE: console
+    volumes:
+      - ./docker/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/observability/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports: ["127.0.0.1:3000:3000"]  # the ONLY obs port on the host, loopback only
+    read_only: true
+    tmpfs: ["/tmp:size=64m"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m  # measured live: ~190 MiB idle, ~280-330 MiB in the first minutes after start
+    depends_on:
+      prometheus: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  ollama:
+  uploads:
+  prometheus-data:
+  grafana-data:

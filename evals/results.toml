@@ -1,0 +1,191 @@
+# Results manifest (Phase 5 R2-3): what docs/RESULTS.md shows, and from which runs.
+#
+# `ragforge-eval2 results --write` renders each [[table]] into the matching
+# `<!-- generated:<id> ... -->` block of docs/RESULTS.md; `--check` re-renders and fails on any
+# difference. Run ids are explicit: the exporter never picks "the latest" run, and a listed run
+# whose summary is missing fails the export. Run ids and arm names are public (R3-2).
+#
+# provider/model: what produced the runs. When a run header records the model, it must match
+# `model` (and `verifier_model`, when set); `models_from = "retrieval"` checks `model` against the
+# header's "<embed_model>, <rerank_model>" instead. When the header records none (interview runs,
+# and the demo retrieval run), the caption says "model from the manifest". Demo values come from evals/demo/arm.toml.
+#
+# Each metric: `name` (from the run's summary), `label` (the row text), `format` (ratio |
+# seconds | number; default ratio). `pending = true` marks a row no run backs yet.
+
+schema_version = 1
+
+# ------------------------------------------------------------------ Acme demo (public)
+[[table]]
+id = "demo-retrieval"
+dataset = "demo"
+title = "Retrieval, Acme demo set"
+provider = "Ollama embeddings, FlashRank reranker (in process)"
+model = "nomic-embed-text, ms-marco-TinyBERT-L-2-v2"
+models_from = "retrieval"
+run_ids = ["retrieval-demo-20261021T173653Z"]
+metrics = [
+  { name = "retrieval.keyword.hit@5", label = "hit@5, keyword" },
+  { name = "retrieval.vector.hit@5", label = "hit@5, vector" },
+  { name = "retrieval.fused.hit@5", label = "hit@5, fused" },
+  { name = "retrieval.reranked.hit@5", label = "hit@5, reranked" },
+  { name = "retrieval.reranked.hit@10", label = "hit@10, reranked" },
+  { name = "retrieval.keyword.mrr", label = "MRR, keyword" },
+  { name = "retrieval.vector.mrr", label = "MRR, vector" },
+  { name = "retrieval.fused.mrr", label = "MRR, fused" },
+  { name = "retrieval.reranked.mrr", label = "MRR, reranked" },
+  { name = "retrieval.fused.ndcg@10", label = "nDCG@10, fused" },
+  { name = "retrieval.reranked.ndcg@10", label = "nDCG@10, reranked" },
+  { name = "retrieval.reranked.recall@5", label = "recall@5, reranked (need=all questions)" },
+  { name = "retrieval.reranked.recall@10", label = "recall@10, reranked (need=all questions)" },
+  { name = "retrieval.fused.recall@20", label = "recall@20, fused (the reranker's ceiling)" },
+  { name = "retrieval.unanswerable.below_tau", label = "unanswerable: top score below tau" },
+]
+
+[[table]]
+id = "demo-generator"
+dataset = "demo"
+title = "Answers (generator), Acme demo set"
+provider = "Google Gemini"
+model = "gemini-3.5-flash-lite"
+run_ids = ["generator-demo-20261021T175028Z"]
+metrics = [
+  { name = "generator.correct", label = "correct" },
+  { name = "generator.verified", label = "verified badge" },
+  { name = "generator.abstain_correct", label = "abstain correct" },
+  { name = "generator.answer_rate", label = "answer rate" },
+]
+
+[[table]]
+id = "demo-application"
+dataset = "demo"
+title = "Full chat path (application), Acme demo set"
+provider = "Google Gemini"
+model = "gemini-3.5-flash-lite"
+run_ids = ["application-demo-20261021T174004Z"]
+metrics = [
+  { name = "application.correct", label = "correct" },
+  { name = "application.verified", label = "verified badge" },
+  { name = "application.abstain_correct", label = "abstain correct" },
+  { name = "application.tokens_per_question", label = "tokens per question", format = "number" },
+]
+
+[[table]]
+id = "demo-latency"
+dataset = "demo"
+title = "Latency, Acme demo set"
+provider = "Google Gemini"
+model = "gemini-3.5-flash-lite"
+run_ids = ["latency-demo-20261021T174336Z"]
+metrics = [
+  { name = "latency.ttft.p50", label = "time to first token, p50", format = "seconds" },
+  { name = "latency.ttft.p95", label = "time to first token, p95", format = "seconds" },
+  { name = "latency.total.p50", label = "total, p50", format = "seconds" },
+  { name = "latency.total.p95", label = "total, p95", format = "seconds" },
+  { name = "latency.cold.ttft.mean", label = "cold: time to first token, mean", format = "seconds" },
+  { name = "latency.cold.total.mean", label = "cold: total, mean", format = "seconds" },
+]
+
+[[table]]
+id = "demo-verifier"
+dataset = "demo"
+title = "Verifier on planted errors, Acme demo set"
+provider = "Google Gemini"
+model = "gemini-3.5-flash-lite"
+run_ids = ["verifier-demo-20261021T174717Z"]
+metrics = [
+  { name = "verifier.badge_flip_recall", label = "badge-flip recall" },
+  { name = "verifier.span_recall", label = "span recall (all mutations)" },
+  { name = "verifier.caught_by.coverage", label = "caught by: coverage only" },
+  { name = "verifier.caught_by.verifier", label = "caught by: verifier only" },
+  { name = "verifier.caught_by.both", label = "caught by: both" },
+  { name = "verifier.caught_by.missed", label = "caught by: missed" },
+  { name = "verifier.caught_unlocated", label = "caught, unlocated" },
+  { name = "verifier.false_reject", label = "false reject (clean answers)" },
+  { name = "verifier.false_reject.verifier_caused", label = "false reject, verifier-caused" },
+  { name = "verifier.false_reject.coverage_caused", label = "false reject, coverage-caused" },
+  { name = "verifier.false_verified@0.05", label = "false verified at a 5% wrong-answer rate" },
+  { name = "verifier.false_verified@0.10", label = "false verified at a 10% wrong-answer rate" },
+  { name = "verifier.false_verified@0.20", label = "false verified at a 20% wrong-answer rate" },
+  { name = "verifier.false_verified@0.30", label = "false verified at a 30% wrong-answer rate" },
+  { name = "verifier.span_recall.identifier_typo", label = "span recall: identifier typo" },
+  { name = "verifier.span_recall.number_drift", label = "span recall: number drift" },
+  { name = "verifier.span_recall.entity_swap", label = "span recall: entity swap" },
+  { name = "verifier.span_recall.negation_flip", label = "span recall: negation flip" },
+  { name = "verifier.span_recall.fabricated_sentence", label = "span recall: fabricated sentence" },
+  { name = "verifier.span_recall.citation_moved", label = "span recall: citation moved" },
+  { name = "verifier.span_recall.guard_dropped", label = "span recall: guard dropped" },
+]
+
+[[table]]
+id = "demo-interview"
+dataset = "demo"
+title = "Interview mode, Acme demo set"
+provider = "Google Gemini"
+model = "gemini-3.5-flash-lite"
+run_ids = ["interview-demo-20261021T175559Z"]
+metrics = [
+  { name = "interview.ranking_accuracy", label = "ranking accuracy (tier pairs)" },
+  { name = "interview.detection_given", label = "misconception detected, given" },
+  { name = "interview.detection_kept", label = "misconception detected, kept" },
+  { name = "interview.band.gold_ge_7", label = "band: gold answer scores 7 or more" },
+  { name = "interview.band.wrong_le_3", label = "band: wrong answer scores 3 or less" },
+  { name = "interview.level.page_l", label = "level test: Page's L statistic", format = "number" },
+  { name = "interview.level.page_l.p_value", label = "level test: Page's L p-value", format = "number" },
+  { name = "interview.level.sde1_vs_staff.sign_p", label = "level test: SDE-1 vs Staff sign test p", format = "number" },
+  { name = "interview.level.retest_sd", label = "test-retest SD (score points)", format = "number" },
+  { name = "interview.question.leak", label = "generated question leaks its answer" },
+  { name = "interview.question.seed_chunk_included", label = "generated question cites its seed chunk" },
+  { name = "interview.question.code_ref", label = "code question references the code" },
+]
+
+# ------------------------------------------------------------------ private set (owner's notes)
+# Generated on the owner's machine only (evals/private is git-ignored); a fresh clone skips these.
+[[table]]
+id = "private-retrieval"
+dataset = "private"
+title = "Retrieval, private set"
+provider = "Ollama embeddings, FlashRank reranker (in process)"
+model = "nomic-embed-text, ms-marco-TinyBERT-L-2-v2"
+models_from = "retrieval"
+run_ids = ["retrieval-A-20261021T191959Z"]
+metrics = [
+  { name = "retrieval.reranked.hit@5", label = "hit@5, reranked" },
+  { name = "retrieval.reranked.hit@10", label = "hit@10, reranked" },
+  { name = "retrieval.reranked.mrr", label = "MRR, reranked" },
+  { name = "retrieval.reranked.ndcg@10", label = "nDCG@10, reranked" },
+  { name = "retrieval.fused.recall@20", label = "recall@20, fused (the reranker's ceiling)" },
+]
+
+[[table]]
+id = "private-generator"
+dataset = "private"
+title = "Answers (generator), private set"
+provider = "Google Gemini"
+model = "gemini-3.5-flash-lite"
+run_ids = ["generator-A-20261022T071117Z"]
+metrics = [
+  { name = "generator.correct", label = "correct" },
+  { name = "generator.verified", label = "verified badge" },
+  { name = "generator.abstain_correct", label = "abstain correct" },
+  { name = "generator.answer_rate", label = "answer rate" },
+  { name = "generator.judge.relevance", label = "judge: relevance (0 to 2)", format = "number" },
+  { name = "generator.judge.completeness", label = "judge: completeness (0 to 2)", format = "number" },
+  { name = "generator.judge.faithfulness", label = "judge: faithfulness (0 to 2)", format = "number" },
+]
+
+[[table]]
+id = "private-labels-pending"
+dataset = "private"
+title = "Verifier and judge calibration, private set"
+provider = "none yet"
+model = "none yet"
+run_ids = []
+metrics = [
+  { name = "verifier.badge_flip_recall", label = "verifier: badge-flip recall", pending = true },
+  { name = "verifier.span_recall", label = "verifier: span recall", pending = true },
+  { name = "verifier.false_reject.verifier_caused", label = "verifier: false reject, verifier-caused", pending = true },
+  { name = "calibration.relevance.kappa_linear", label = "judge calibration: relevance, linear kappa", pending = true },
+  { name = "calibration.completeness.kappa_linear", label = "judge calibration: completeness, linear kappa", pending = true },
+  { name = "calibration.faithfulness.kappa_linear", label = "judge calibration: faithfulness, linear kappa", pending = true },
+]

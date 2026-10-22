@@ -1,0 +1,71 @@
+{
+  "schema_version": 2,
+  "run_id": "latency-demo-20261021T174336Z",
+  "eval_kind": "latency",
+  "header_digest": "d738185c41abe6167fcddea753fdb4b2a1b24cfb4ca11ec6498c29fa70153893",
+  "metrics": [
+    {
+      "name": "latency.cold.total.mean",
+      "value": 4.82385087502189,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 2,
+      "method": "point",
+      "trusted": null,
+      "note": "first questions of the pass, excluded above"
+    },
+    {
+      "name": "latency.cold.ttft.mean",
+      "value": 2.188967728521675,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 2,
+      "method": "point",
+      "trusted": null,
+      "note": "first questions of the pass, excluded above"
+    },
+    {
+      "name": "latency.total.p50",
+      "value": 4.306429479504004,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 18,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "latency.total.p95",
+      "value": 6.568335070437742,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 18,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "latency.ttft.p50",
+      "value": 1.6906278536189348,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 18,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "latency.ttft.p95",
+      "value": 5.646646026871166,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 18,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    }
+  ],
+  "stale_items": 0,
+  "errors_ours": 0,
+  "errors_transient": 0
+}

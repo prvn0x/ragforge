@@ -1,0 +1,437 @@
+[
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "api-rate-limiting.md"
+      },
+      "heading_path": [
+        "API Rate Limiting"
+      ],
+      "display_sha256": "286d53db141df64d5805509e32924ee81819bc3479a160651262e680e61572d8",
+      "occurrence": 0
+    },
+    "text": "# API Rate Limiting\n\n## Token bucket\n\nEach API key has a token bucket of 100 tokens that refills at 10 tokens per second. A request spends one token; an empty bucket returns HTTP 429 with a `Retry-After` header.\n\n## Why per key\n\nLimits are per API key, not per IP address, because many customers share one corporate NAT address."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "api-rate-limiting.md"
+      },
+      "heading_path": [
+        "API Rate Limiting",
+        "Storage"
+      ],
+      "display_sha256": "8690c88e18a2fb2d439d9abb53915aedeaeaefc5cbc16eb3886f3063159ad991",
+      "occurrence": 0
+    },
+    "text": "## Storage\n\nThe buckets live in Redis so every API replica sees the same counts. The update is a single Lua script, so the read and the decrement are atomic."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "circuit-breaker.md"
+      },
+      "heading_path": [
+        "Circuit Breaker"
+      ],
+      "display_sha256": "c6aab902f09070e259525710278da83e62e2a3b2e3c7ecc59cb2dea8df2c6bca",
+      "occurrence": 0
+    },
+    "text": "# Circuit Breaker\n\n## States\n\nA circuit breaker has three states. Closed passes calls through. Open fails fast without calling the dependency. Half-open lets a few trial calls through to test recovery.\n\n## Acme settings\n\nThe carrier-tracking client opens after 50 percent of calls fail within a 30 second window, stays open for 20 seconds, then moves to half-open with 5 trial calls."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "circuit-breaker.md"
+      },
+      "heading_path": [
+        "Circuit Breaker",
+        "Pairing with retries"
+      ],
+      "display_sha256": "6a2b0397fae408e0e8c936a645303478f477b8d451ac71913684610cd836219e",
+      "occurrence": 0
+    },
+    "text": "## Pairing with retries\n\nRetries go inside the breaker, with exponential backoff and jitter. Retrying outside an open breaker would only add load to a dependency that is already failing."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "deploy-runbook.md"
+      },
+      "heading_path": [
+        "Deploy Runbook"
+      ],
+      "display_sha256": "2ba21e059da04c10529a37c3ecda5ed85a04b02915ecb00e32a81f31265ecf9f",
+      "occurrence": 0
+    },
+    "text": "# Deploy Runbook\n\n## Rolling deploys\n\nServices deploy with a rolling update: a quarter of the pods at a time, each must pass its readiness probe before the next batch starts.\n\n## Rollback\n\nA deploy is rolled back if the error rate rises above 2 percent for 5 minutes. Rollback redeploys the previous image tag; database migrations must therefore stay backward compatible for one release."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "deploy-runbook.md"
+      },
+      "heading_path": [
+        "Deploy Runbook",
+        "Dangerous commands"
+      ],
+      "display_sha256": "7b1436b038c0249d17362c84dfb90a2f5f383193e7b40cf17cb5de784397b543",
+      "occurrence": 0
+    },
+    "text": "## Dangerous commands\n\n```bash\n# DANGER: never run this against production\nif [ \"$ENV\" != \"dev\" ]; then exit 1; fi\nkafka-topics --delete --topic tracking-events\n```"
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "design-tracking-service.md"
+      },
+      "heading_path": [
+        "Design: Shipment Tracking Service"
+      ],
+      "display_sha256": "6045ff71abd98768effed1fe4f2b0e4db8521edc7598a4313640398ce016c219",
+      "occurrence": 0
+    },
+    "text": "# Design: Shipment Tracking Service\n\n## Requirements\n\nThe service ingests about 20,000 position updates per second from trucks and answers \"where is my shipment\" queries with a p99 under 200 milliseconds.\n\n## High level design\n\nTrucks send updates to an ingest API, which publishes them to Kafka keyed by `shipment_id`. A consumer keeps the latest position per shipment in Redis. Queries read Redis; history goes to a columnar store for analytics."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "design-tracking-service.md"
+      },
+      "heading_path": [
+        "Design: Shipment Tracking Service",
+        "Trade-offs"
+      ],
+      "display_sha256": "48666ea770ac561b9002f48cf65ae61a37901fcf86b5f8886f96abdca4a93c8b",
+      "occurrence": 0
+    },
+    "text": "## Trade-offs\n\nKeying by shipment keeps each shipment's updates in order but can create hot partitions for very busy shipments. Redis holds only the latest position, so a Redis loss is rebuilt by replaying the last hour of the topic."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "idempotency-keys.md"
+      },
+      "heading_path": [
+        "Idempotency Keys"
+      ],
+      "display_sha256": "dd7f51f9f60d7282609149622b3f7065fc3a3bfe9780f0c6915050a3a25d82d6",
+      "occurrence": 0
+    },
+    "text": "# Idempotency Keys\n\n## The problem\n\nA client that times out cannot know whether its payment request was applied, so it retries. Without protection the payment is charged twice.\n\n## The Acme design\n\nThe client sends an `Idempotency-Key` header. The server stores the key with the response for 24 hours. A retry with the same key returns the stored response instead of charging again."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "idempotency-keys.md"
+      },
+      "heading_path": [
+        "Idempotency Keys",
+        "Code"
+      ],
+      "display_sha256": "e466c50ba71a6a8bb925624a7b6d648f1555ca6640740e0e80ee10a4eefcbcda",
+      "occurrence": 0
+    },
+    "text": "## Code\n\n```python\ndef charge(request, key):\n    saved = store.get(key)\n    if saved is not None:\n        return saved\n    result = payments.charge(request)\n    store.put(key, result, ttl_hours=24)\n    return result\n```"
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "incident-kafka-lag.md"
+      },
+      "heading_path": [
+        "Incident: Shipment Tracking Lag (2025)"
+      ],
+      "display_sha256": "fa8eaa57f8ae6d8e5fbd82e4716d2b99a6cff5e8ec62464c612d7c8b9546c9c4",
+      "occurrence": 0
+    },
+    "text": "# Incident: Shipment Tracking Lag (2025)\n\n## What happened\n\nConsumer lag on the tracking topic grew to 40 minutes during peak season. Customers saw stale shipment positions.\n\n## Root cause\n\nA new enrichment step called an external geocoding API inside the poll loop. Slow calls pushed the time between polls past `max.poll.interval.ms`, so consumers were kicked out of the group and the group kept rebalancing."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "incident-kafka-lag.md"
+      },
+      "heading_path": [
+        "Incident: Shipment Tracking Lag (2025)",
+        "Fix"
+      ],
+      "display_sha256": "fb8ecbdffc44167aafdee6de282ebd898f8801a633619f95c27eb1708a8888e2",
+      "occurrence": 0
+    },
+    "text": "## Fix\n\nThe geocoding calls moved to a bounded worker pool, the poll loop only hands records off, and a timeout of 2 seconds was set on the external call."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "incident-redis-outage.md"
+      },
+      "heading_path": [
+        "Incident: Session Store Outage"
+      ],
+      "display_sha256": "7c99592c3acd2f6cf4e4ebaddc0bd6c0d62f89c57d3eb2526df3cb5a829c924f",
+      "occurrence": 0
+    },
+    "text": "# Incident: Session Store Outage\n\n## What happened\n\nThe Redis primary of the session store ran out of memory and stopped accepting writes for 12 minutes. Users were logged out.\n\n## Root cause\n\nA bug stored a full shipment manifest in every session instead of an id. Memory filled within two hours of the deploy, and the session keys had no TTL, so nothing was evicted."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "incident-redis-outage.md"
+      },
+      "heading_path": [
+        "Incident: Session Store Outage",
+        "Fix"
+      ],
+      "display_sha256": "b776a92a79c5efa79d215e9d8fe8c6a5cffc60dfd7e9570d68e69d958e81b9c9",
+      "occurrence": 0
+    },
+    "text": "## Fix\n\nSessions now store only ids, every session key has a TTL, and an alert fires when memory use passes 80 percent."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "kafka-basics.md"
+      },
+      "heading_path": [
+        "Kafka Basics at Acme Shipping"
+      ],
+      "display_sha256": "c62bae37bd181c66243b11c6fa325393e497a09047346bacdf835656bcd0fd38",
+      "occurrence": 0
+    },
+    "text": "# Kafka Basics at Acme Shipping\n\n## Topics and partitions\n\nA topic is split into partitions. Each partition is an ordered, append-only log stored on a broker. Ordering is guaranteed only within one partition, never across partitions.\n\n## Keys and routing\n\nThe producer hashes the record key to pick a partition, so records with the same key always land in the same partition. Acme keys shipment events by `shipment_id` so every event of one shipment stays in order."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "kafka-basics.md"
+      },
+      "heading_path": [
+        "Kafka Basics at Acme Shipping",
+        "Consumer groups"
+      ],
+      "display_sha256": "349c971a3c68ea53ca4ab171f2316f6325ce698839473ec8d128754b15567c3c",
+      "occurrence": 0
+    },
+    "text": "## Consumer groups\n\nEach partition is read by exactly one consumer in a group. Adding consumers beyond the partition count leaves the extra consumers idle."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "kafka-consumer-rebalance.md"
+      },
+      "heading_path": [
+        "Kafka Consumer Rebalance"
+      ],
+      "display_sha256": "45d6c21941f9a596ed78711b82e93b6b6cd01d76b11f0dcdc0efe14dc68cce1e",
+      "occurrence": 0
+    },
+    "text": "# Kafka Consumer Rebalance\n\n## What triggers a rebalance\n\nA rebalance happens when a consumer joins, leaves, or misses heartbeats for longer than `session.timeout.ms`. A consumer that takes longer than `max.poll.interval.ms` between polls is also removed from the group.\n\n## Eager vs cooperative\n\nThe eager protocol revokes every partition from every consumer, which pauses the whole group. The cooperative sticky assignor moves only the partitions that change owner, so most consumers keep working during a rebalance."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "kafka-consumer-rebalance.md"
+      },
+      "heading_path": [
+        "Kafka Consumer Rebalance",
+        "Static membership"
+      ],
+      "display_sha256": "63c8218882c31624b403ab14d6126d90524214d043343ca1b9e489d2e3d7d6ec",
+      "occurrence": 0
+    },
+    "text": "## Static membership\n\nSetting `group.instance.id` gives a consumer a stable identity, so a quick restart during a deploy does not trigger a rebalance at all."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "kafka-producer-config.md"
+      },
+      "heading_path": [
+        "Kafka Producer Configuration"
+      ],
+      "display_sha256": "a76c1db620d73976ac9d24b5302098d85e540a8f9d541a8097ec9b9fe7d9f8b1",
+      "occurrence": 0
+    },
+    "text": "# Kafka Producer Configuration\n\n## Durability settings\n\nAcme producers set `acks=all` so a write is acknowledged only after every in-sync replica has it. Together with `min.insync.replicas=2` on the topic, a single broker loss never loses an acknowledged event.\n\n## Ordering and retries\n\nRetries can reorder records when more than one request is in flight. Setting `max.in.flight.requests.per.connection` to 1 gives strict ordering at a throughput cost. With `enable.idempotence=true`, ordering is kept with up to 5 in-flight requests."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "kafka-producer-config.md"
+      },
+      "heading_path": [
+        "Kafka Producer Configuration",
+        "Example"
+      ],
+      "display_sha256": "e1294dd865349b8543982769c2b6a14128cacac941e8f1e5a0fef6f4a890dd5f",
+      "occurrence": 0
+    },
+    "text": "## Example\n\n```java\nProperties props = new Properties();\nprops.put(\"acks\", \"all\");\nprops.put(\"enable.idempotence\", \"true\");\nprops.put(\"max.in.flight.requests.per.connection\", \"5\");\nKafkaProducer<String, String> producer = new KafkaProducer<>(props);\n```"
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "outbox-pattern.md"
+      },
+      "heading_path": [
+        "Outbox Pattern"
+      ],
+      "display_sha256": "ee3a8f7aa366f71e6a4dfdcc8337de1798216f0b739417e599940e30cdfe0b64",
+      "occurrence": 0
+    },
+    "text": "# Outbox Pattern\n\n## Dual writes\n\nWriting to Postgres and then publishing to Kafka is a dual write: if the service crashes between the two, the database and the event stream disagree.\n\n## How the outbox works\n\nThe service writes the business row and an outbox row in one database transaction. A separate relay reads the outbox table and publishes each row to Kafka, marking it sent."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "outbox-pattern.md"
+      },
+      "heading_path": [
+        "Outbox Pattern",
+        "Delivery guarantee"
+      ],
+      "display_sha256": "5013d08e75f0d88821b0af74ca37f968d29ecebed3881220e7fe727fa747efbb",
+      "occurrence": 0
+    },
+    "text": "## Delivery guarantee\n\nThe relay may publish a row twice after a crash, so delivery is at least once. Consumers must be idempotent, for example by deduplicating on the event id."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "postgres-indexing.md"
+      },
+      "heading_path": [
+        "Postgres Indexing"
+      ],
+      "display_sha256": "1ce5f6eda2148be53af735a2c70e3c84d2f7d0e1724ae619fa030c52ff54be75",
+      "occurrence": 0
+    },
+    "text": "# Postgres Indexing\n\n## B-tree indexes\n\nThe default B-tree index serves equality and range queries. A composite index on `(tenant_id, created_at)` serves queries that filter by tenant and sort by time, but not queries that filter by time alone.\n\n## Partial indexes\n\nA partial index covers only the rows matching a condition. Acme indexes `shipments(status) WHERE status = 'in_transit'` because only about 3 percent of rows are in transit."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "postgres-indexing.md"
+      },
+      "heading_path": [
+        "Postgres Indexing",
+        "Checking a plan"
+      ],
+      "display_sha256": "599ed382e3e5d41f71c7f5bb47426ed92c2e7a6590176446e582dacb7cdb64f9",
+      "occurrence": 0
+    },
+    "text": "## Checking a plan\n\n`EXPLAIN ANALYZE` runs the query and shows the real plan with timings. A sequential scan on a large table in a hot path usually means a missing index."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "redis-caching.md"
+      },
+      "heading_path": [
+        "Redis Caching"
+      ],
+      "display_sha256": "85ccc9ebd017d2ff747fac62f4a30d3025a72b38fa9bc6b6e83d199170e7fb7a",
+      "occurrence": 0
+    },
+    "text": "# Redis Caching\n\n## Cache-aside\n\nAcme uses cache-aside: the service reads Redis first, and on a miss it loads the row from Postgres and writes it to Redis with a TTL. Writes go to Postgres and then delete the cache key.\n\n## TTL and stampedes\n\nEvery key gets a TTL of 10 minutes plus random jitter of up to 60 seconds, so many keys never expire at the same moment. A hot key that expires can cause a stampede; Acme guards hot keys with a short lock so only one request reloads it."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "redis-caching.md"
+      },
+      "heading_path": [
+        "Redis Caching",
+        "Eviction"
+      ],
+      "display_sha256": "4d6e8b1693ab122c6412f09f83f0b3fc2eb70260899063157d42a263294af65c",
+      "occurrence": 0
+    },
+    "text": "## Eviction\n\nThe cluster runs with `maxmemory-policy allkeys-lru`, so the least recently used keys are evicted when memory is full."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "redis-persistence.md"
+      },
+      "heading_path": [
+        "Redis Persistence"
+      ],
+      "display_sha256": "6e80b39be8cdec31a15599db590cf5259a8ab9cf7225d7a3aaa113d1a0d471eb",
+      "occurrence": 0
+    },
+    "text": "# Redis Persistence\n\n## RDB snapshots\n\nRDB writes a point-in-time snapshot of the dataset to disk at intervals. It is compact and fast to restore, but writes since the last snapshot are lost on a crash.\n\n## AOF\n\nThe append-only file logs every write. With `appendfsync everysec`, at most about one second of writes is lost on a crash. AOF files grow, so Redis rewrites them in the background."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "redis-persistence.md"
+      },
+      "heading_path": [
+        "Redis Persistence",
+        "What Acme runs"
+      ],
+      "display_sha256": "8025c21a863ac2fdb2f125204467b2c3b2de9863c0939c86a30ca9332d6175f6",
+      "occurrence": 0
+    },
+    "text": "## What Acme runs\n\nThe session store uses AOF with `appendfsync everysec`. The rate-limit counters use no persistence at all, because losing them only resets limits."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "testing-strategy.md"
+      },
+      "heading_path": [
+        "Testing Strategy"
+      ],
+      "display_sha256": "ea8bd70020ba03844a58593066b396ce12fb3f52a18050866f77953fc84707eb",
+      "occurrence": 0
+    },
+    "text": "# Testing Strategy\n\n## The test pyramid\n\nMost tests are fast unit tests, fewer are integration tests against real Postgres and Kafka in containers, and a handful are end-to-end tests of the main user journeys.\n\n## Contract tests\n\nServices that call each other share consumer-driven contract tests, so a provider change that breaks a consumer fails in the provider's build."
+  },
+  {
+    "key": {
+      "page": {
+        "source_kind": "file",
+        "key": "testing-strategy.md"
+      },
+      "heading_path": [
+        "Testing Strategy",
+        "Flaky tests"
+      ],
+      "display_sha256": "fbc60a3f494716867fa24ced22c0d953d3a6be60ccc6c4f1f0bee184aea7f8e0",
+      "occurrence": 0
+    },
+    "text": "## Flaky tests\n\nA test that fails without a code change is quarantined within a day and fixed or deleted within a week. Quarantined tests still run but do not block merges."
+  }
+]

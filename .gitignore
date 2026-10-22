@@ -1,0 +1,37 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.import_linter_cache/
+.hypothesis/
+dist/
+build/
+*.egg-info/
+.DS_Store
+
+# Private eval data (ADR-0012): questions and answers come from the owner's Notion
+evals/private/
+
+# ADR-0017 eval runs (answers, summaries, baselines, target.json) stay local
+# `runs/*`, not `runs/`: git cannot re-include a file inside an excluded directory, so the
+# directory itself stays visible and only its entries are ignored (Phase 5 R2-3, R3-2).
+evals/*/runs/*
+# ...except the demo's numbers-only files that docs/RESULTS.md is generated from
+!evals/demo/runs/*.summary.json
+!evals/demo/runs/*.header.json
+*.answers.staging
+evals/demo/labels.jsonl
+evals/demo/judge-cache.jsonl
+evals/demo/calibration.jsonl
+evals/demo/target.json
+
+# Secrets (ADR-0018 R2-8): env variants, key and certificate files. The template stays committed.
+.env.*
+!.env.example
+*.key
+*.pem
+# IDE state (holds local paths)
+.idea/

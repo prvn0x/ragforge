@@ -1,0 +1,1445 @@
+{
+  "uid": "ragforge-overview",
+  "title": "RAGForge",
+  "description": "ADR-0018 §6: answers, models, retrieval & jobs, freshness & health. Catalogue metrics only (observability/catalog.py).",
+  "tags": [
+    "ragforge"
+  ],
+  "editable": false,
+  "graphTooltip": 1,
+  "timezone": "browser",
+  "refresh": "1m",
+  "schemaVersion": 41,
+  "version": 1,
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "type": "link",
+      "title": "All alert rules",
+      "tooltip": "Grafana Alerting > Alert rules: the Prometheus rules and their state, if the Alerts panel is empty",
+      "url": "/alerting/list",
+      "icon": "bell",
+      "targetBlank": false,
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": false,
+      "tags": []
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "type": "custom",
+        "name": "surface",
+        "label": "Surface",
+        "description": "chat is the owner; eval and demo traffic stays out of the owner's signals.",
+        "query": "chat,interview,eval,demo,other",
+        "multi": true,
+        "includeAll": false,
+        "current": {
+          "text": [
+            "chat"
+          ],
+          "value": [
+            "chat"
+          ]
+        },
+        "options": [
+          {
+            "text": "chat",
+            "value": "chat",
+            "selected": true
+          },
+          {
+            "text": "interview",
+            "value": "interview",
+            "selected": false
+          },
+          {
+            "text": "eval",
+            "value": "eval",
+            "selected": false
+          },
+          {
+            "text": "demo",
+            "value": "demo",
+            "selected": false
+          },
+          {
+            "text": "other",
+            "value": "other",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "type": "custom",
+        "name": "window",
+        "label": "Window",
+        "description": "Rate/increase window. At one user, short windows are mostly empty.",
+        "query": "15m,1h,6h,24h",
+        "multi": false,
+        "includeAll": false,
+        "current": {
+          "text": "1h",
+          "value": "1h"
+        },
+        "options": [
+          {
+            "text": "15m",
+            "value": "15m",
+            "selected": false
+          },
+          {
+            "text": "1h",
+            "value": "1h",
+            "selected": true
+          },
+          {
+            "text": "6h",
+            "value": "6h",
+            "selected": false
+          },
+          {
+            "text": "24h",
+            "value": "24h",
+            "selected": false
+          }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "id": 1,
+      "title": "Answers",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "id": 2,
+      "title": "Chat time to first token (p50 / p95)",
+      "description": "Owner surface by default (the surface variable). Wide windows: at one user a 5 min p95 is mostly empty.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, provider) (rate(ragforge_chat_time_to_first_token_seconds_bucket{surface=~\"$surface\"}[$window])))",
+          "legendFormat": "p50 {{provider}}",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, provider) (rate(ragforge_chat_time_to_first_token_seconds_bucket{surface=~\"$surface\"}[$window])))",
+          "legendFormat": "p95 {{provider}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 3,
+      "title": "Chat turn duration (p50 / p95)",
+      "description": "SLO lines: hosted 5 s, local 12 s (DESIGN §2). The alerts use the exact share over the bucket edge, not this interpolated quantile.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, provider) (rate(ragforge_chat_turn_duration_seconds_bucket{surface=~\"$surface\"}[$window])))",
+          "legendFormat": "p50 {{provider}}",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, provider) (rate(ragforge_chat_turn_duration_seconds_bucket{surface=~\"$surface\"}[$window])))",
+          "legendFormat": "p95 {{provider}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 12
+              }
+            ]
+          },
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 4,
+      "title": "Turns by outcome",
+      "description": "answered / abstained / refused / error / interrupted, per window.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum by (outcome) (increase(ragforge_chat_turns_total{surface=~\"$surface\"}[$window]))",
+          "legendFormat": "{{outcome}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "piechart",
+      "id": 5,
+      "title": "Verification mix (time range)",
+      "description": "Verdicts of ANSWERED turns only (abstain, refusal and error excluded).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum by (status) (increase(ragforge_verification_total{surface=~\"$surface\"}[$__range]))",
+          "legendFormat": "{{status}}",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "pieType": "donut"
+      }
+    },
+    {
+      "type": "stat",
+      "id": 6,
+      "title": "Verified share (time range)",
+      "description": "Alert: under 50% over 6 h with at least 30 answered owner turns.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 6,
+        "y": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "(sum(increase(ragforge_verification_total{surface=~\"$surface\", status=\"verified\"}[$__range])) or vector(0)) / sum(increase(ragforge_verification_total{surface=~\"$surface\"}[$__range]))",
+          "legendFormat": "verified",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.5
+              },
+              {
+                "color": "green",
+                "value": 0.7
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 7,
+      "title": "Flagged claims by reason",
+      "description": "Claims the citation check flagged: not_found (no supporting chunk) or inexact_code.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 10,
+        "y": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum by (reason) (increase(ragforge_flagged_claims_total{surface=~\"$surface\"}[$window]))",
+          "legendFormat": "{{reason}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "stat",
+      "id": 8,
+      "title": "Chat streams in flight",
+      "description": "Open SSE chat streams right now.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 20,
+        "y": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum(ragforge_chat_streams_in_flight)",
+          "legendFormat": "streams",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "row",
+      "id": 9,
+      "title": "Models",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "id": 10,
+      "title": "Model call p95 by prompt",
+      "description": "Every model call (chat, verifier, interview, extras), by prompt name@version. Includes eval and demo traffic: model and retrieval metrics have no surface label (catalogue gap), so the surface dropdown does not filter this panel.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 18
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, prompt) (rate(ragforge_llm_request_duration_seconds_bucket[$window])))",
+          "legendFormat": "{{prompt}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 11,
+      "title": "Tokens per hour",
+      "description": "Prompt and completion tokens from the providers' usage reports. Includes eval and demo traffic: model and retrieval metrics have no surface label (catalogue gap), so the surface dropdown does not filter this panel.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 18
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum by (provider, direction) (increase(ragforge_llm_tokens_total[1h]))",
+          "legendFormat": "{{provider}} {{direction}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 12,
+      "title": "Model calls that did not succeed",
+      "description": "By outcome: rate_limited (429) and quota_exhausted are the ones that alert. Includes eval and demo traffic: model and retrieval metrics have no surface label (catalogue gap), so the surface dropdown does not filter this panel.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 18
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum by (provider, outcome) (increase(ragforge_llm_requests_total{outcome!=\"ok\"}[$window]))",
+          "legendFormat": "{{provider}} {{outcome}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 13,
+      "title": "Model calls by prompt",
+      "description": "Call volume per prompt: what drives cost and 429s. Includes eval and demo traffic: model and retrieval metrics have no surface label (catalogue gap), so the surface dropdown does not filter this panel.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 26
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum by (prompt) (increase(ragforge_llm_requests_total[$window]))",
+          "legendFormat": "{{prompt}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 14,
+      "title": "Embedding p95 and failures",
+      "description": "Local Ollama embeddings, api (queries) and worker (ingest). Includes eval and demo traffic: model and retrieval metrics have no surface label (catalogue gap), so the surface dropdown does not filter this panel.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 26
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, process) (rate(ragforge_embed_request_duration_seconds_bucket[$window])))",
+          "legendFormat": "p95 {{process}}",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum by (process, outcome) (increase(ragforge_embed_requests_total{outcome!=\"ok\"}[$window]))",
+          "legendFormat": "{{process}} {{outcome}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 15,
+      "title": "Interview calls",
+      "description": "Question and grade calls by source and outcome.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 26
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum by (endpoint, source, outcome) (increase(ragforge_interview_requests_total[$window]))",
+          "legendFormat": "{{endpoint}} {{source}} {{outcome}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "row",
+      "id": 16,
+      "title": "Retrieval & jobs",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "id": 17,
+      "title": "Retrieval stage p95",
+      "description": "embed / search / rerank. Includes eval and demo traffic: model and retrieval metrics have no surface label (catalogue gap), so the surface dropdown does not filter this panel.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 35
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, stage) (rate(ragforge_retrieval_duration_seconds_bucket[$window])))",
+          "legendFormat": "{{stage}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 18,
+      "title": "Ready jobs by priority",
+      "description": "Queued jobs whose run_after has passed.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 35
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum by (priority) (ragforge_jobs_ready)",
+          "legendFormat": "{{priority}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 19,
+      "title": "Oldest queued job age by priority",
+      "description": "Alert line: interactive and webhook over 120 s for 5 min. Backfill is exempt.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 35
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "max by (priority) (ragforge_jobs_oldest_queued_age_seconds)",
+          "legendFormat": "{{priority}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 120
+              }
+            ]
+          },
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 20,
+      "title": "Job outcomes",
+      "description": "done / failed / dead / requeued by job kind.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 43
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum by (kind, outcome) (increase(ragforge_jobs_total[$window]))",
+          "legendFormat": "{{kind}} {{outcome}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 21,
+      "title": "Job duration p95 by kind",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 8,
+        "y": 43
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, kind) (rate(ragforge_job_duration_seconds_bucket[$window])))",
+          "legendFormat": "{{kind}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "stat",
+      "id": 22,
+      "title": "Dead jobs (24 h)",
+      "description": "Jobs whose retries ran out in the last 24 h, counted in rf.jobs AND rf.jobs_history (the upkeep archives finished jobs after 5 min, so a dead one stays counted for the whole day). Find them with make psql: rf.jobs_history where status is dead, newest first; read last_error. Alert: the count rises.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 3,
+        "x": 14,
+        "y": 43
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "max(ragforge_jobs_dead)",
+          "legendFormat": "dead",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "stat",
+      "id": 23,
+      "title": "Expired leases",
+      "description": "Running jobs whose lease expired (a worker died mid-job).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 3,
+        "x": 17,
+        "y": 43
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "max(ragforge_jobs_expired_leases)",
+          "legendFormat": "expired",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "stat",
+      "id": 24,
+      "title": "Orphan hits (window)",
+      "description": "Retrieval hits whose page is gone (DESIGN §7.3). Includes eval and demo traffic: model and retrieval metrics have no surface label (catalogue gap), so the surface dropdown does not filter this panel.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 20,
+        "y": 43
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum(increase(ragforge_retrieval_orphan_hits_total[$window]))",
+          "legendFormat": "orphans",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 25,
+      "title": "Notion API requests by status",
+      "description": "2xx / 429 / 4xx / 5xx / network, from the worker's client.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 51
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum by (status) (increase(ragforge_notion_requests_total[$window]))",
+          "legendFormat": "{{status}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "row",
+      "id": 26,
+      "title": "Freshness & health",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 57
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "id": 27,
+      "title": "Time since last successful sync",
+      "description": "Stalest enabled connector per kind. Alert: over 30 min, for 15 min.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 58
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "max by (connector_kind) (ragforge_sync_oldest_success_age_seconds)",
+          "legendFormat": "{{connector_kind}}",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 900
+              },
+              {
+                "color": "red",
+                "value": 1800
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 28,
+      "title": "HTTP 5xx ratio",
+      "description": "Client disconnects excluded. Alert: over 2% (1 h, at least 5 requests) for 15 min.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 9,
+        "x": 6,
+        "y": 58
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "(sum(rate(ragforge_http_requests_total{status_class=\"5xx\"}[$window])) or vector(0)) / sum(rate(ragforge_http_requests_total{status_class!=\"disconnected\"}[$window]))",
+          "legendFormat": "5xx share",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.02
+              }
+            ]
+          },
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 29,
+      "title": "HTTP requests by route and status",
+      "description": "Matched route templates; `unmatched` is 404/413 before routing.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 9,
+        "x": 15,
+        "y": 58
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum by (route, status_class) (increase(ragforge_http_requests_total[$window]))",
+          "legendFormat": "{{route}} {{status_class}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 30,
+      "title": "HTTP p95 by route (non-streaming)",
+      "description": "SSE responses are excluded from this histogram.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 66
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(ragforge_http_request_duration_seconds_bucket[$window])))",
+          "legendFormat": "{{route}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "timeseries",
+      "id": 31,
+      "title": "DB pool: checked out vs size",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 66
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum by (process, pool) (ragforge_db_pool_checked_out)",
+          "legendFormat": "{{process}} {{pool}} out",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "sum by (process, pool) (ragforge_db_pool_size)",
+          "legendFormat": "{{process}} {{pool}} size",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "stat",
+      "id": 32,
+      "title": "Scrape targets up",
+      "description": "1 = Prometheus scraped the target. A stopped worker disappears instead (its own alert).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 66
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "up{job=~\"ragforge-api|ragforge-worker\"}",
+          "legendFormat": "{{job}} {{instance}}",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "type": "table",
+      "id": 33,
+      "title": "Build info",
+      "description": "Version and schema version per process.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "ragforge-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 74
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "ragforge-prometheus"
+          },
+          "expr": "ragforge_build_info",
+          "legendFormat": "__auto",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "type": "alertlist",
+      "id": 34,
+      "title": "Alerts (Prometheus rules)",
+      "description": "Prometheus evaluates the rules; this only lists them. Nothing is delivered anywhere else, so an alert is seen only while this board is open.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 74
+      },
+      "options": {
+        "viewMode": "list",
+        "groupMode": "default",
+        "groupBy": [],
+        "maxItems": 20,
+        "sortOrder": 1,
+        "dashboardAlerts": false,
+        "alertName": "",
+        "alertInstanceLabelFilter": "",
+        "datasource": "Prometheus",
+        "folder": null,
+        "showInstances": true,
+        "stateFilter": {
+          "firing": true,
+          "pending": true,
+          "noData": false,
+          "normal": false,
+          "error": true
+        }
+      }
+    }
+  ]
+}

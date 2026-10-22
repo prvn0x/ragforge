@@ -1,0 +1,99 @@
+# gitleaks config for RAGForge (ADR-0018 Security 3 + Revision 2 R2-8). Run: `make secrets-scan`.
+#
+# Why explicit path allowlists: the tree is not a git repo yet, so `gitleaks dir` cannot honour
+# .gitignore. The scanner sees every file; this list skips only machine-generated caches and
+# third-party code. Everything we write (packages/, docs/ incl. handoffs and workflows,
+# evals/demo/, scripts/, .idea/, .env.example) IS scanned. The files that exist precisely to hold
+# secrets (.env, .env.<name>, evals/private/) are never even shown to the container:
+# scripts/security/secrets.sh masks them with empty mounts, so they are not listed here.
+#
+# Suppressions live ONLY in this reviewed file: secrets.sh passes --ignore-gitleaks-allow, so an
+# inline `gitleaks:allow` comment cannot silence a finding.
+#
+# The custom rules below are mirrored by packages/core/tests/test_sec_scan_gitleaks_rules.py,
+# which feeds synthetic samples of each token shape (and the repo's known fixture strings)
+# through them. Change a rule and that test tells you what you broke.
+
+title = "RAGForge secret scan"
+
+[extend]
+# Keep gitleaks' ~200 built-in rules (private keys, AWS, GitHub, generic API keys, ...) and add
+# the four shapes this project actually handles.
+useDefault = true
+
+# ---------------------------------------------------------------- custom rules
+# Each regex captures the whole token in group 1 (secretGroup) so the entropy gate and the
+# stopwords see the token itself, not the delimiter that ends it. The trailing class stops a
+# longer run of token characters from matching a prefix of itself. The entropy gate (Shannon,
+# bits per char) drops placeholders such as `AIzaXXXXXXXX...`; real tokens score above 4.
+
+[[rules]]
+id = "ragforge-api-key"
+description = "RAGForge API key: rf_<16 hex prefix>_<43 char urlsafe secret> (services/auth/keys.py)"
+regex = '''(rf_[0-9a-f]{16}_[A-Za-z0-9_-]{43})(?:[^A-Za-z0-9_-]|$)'''
+secretGroup = 1
+entropy = 3.0
+keywords = ["rf_"]
+
+[[rules]]
+id = "notion-token-ntn"
+description = "Notion integration token, current format (ntn_ + 40-60 alphanumerics)"
+regex = '''(ntn_[A-Za-z0-9]{40,60})(?:[^A-Za-z0-9]|$)'''
+secretGroup = 1
+entropy = 3.0
+keywords = ["ntn_"]
+
+[[rules]]
+id = "notion-token-secret"
+description = "Notion integration token, legacy format (secret_ + 43 alphanumerics)"
+regex = '''(secret_[A-Za-z0-9]{43})(?:[^A-Za-z0-9]|$)'''
+secretGroup = 1
+entropy = 3.0
+keywords = ["secret_"]
+
+[[rules]]
+id = "gemini-api-key"
+description = "Google / Gemini API key (AIza + 35 chars)"
+regex = '''(AIza[0-9A-Za-z_-]{35})(?:[^0-9A-Za-z_-]|$)'''
+secretGroup = 1
+entropy = 3.0
+keywords = ["AIza"]
+
+# ---------------------------------------------------------------- global allowlists
+[[allowlists]]
+description = "Generated caches, virtualenvs and third-party code: nothing we author lives here"
+paths = [
+  '''(^|/)\.venv/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)__pycache__/''',
+  '''(^|/)\.(mypy|ruff|pytest|import_linter)_cache/''',
+  '''(^|/)\.hypothesis/''',
+  '''(^|/)(dist|build)/''',
+  '''(^|/)[^/]+\.egg-info/''',
+  '''(^|/)\.DS_Store$''',
+  # Eval run folders (ADR-0017): model answers over the owner's notes, git-ignored, regenerated.
+  '''(^|/)evals/[^/]+/runs/''',
+]
+
+[[allowlists]]
+description = """Known synthetic test fixtures that are deliberately key-shaped (they prove the \
+code never leaks a key). Every one carries the marker `leakcanary`; a real random token \
+containing that word is vanishingly unlikely."""
+stopwords = ["leakcanary"]
+
+[[allowlists]]
+description = """Eval fixtures key their judge cache by SHA-256 hex digests (`cache_key`). A digest \
+of public fixture content is not a credential; only that file shape, only the generic rule."""
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^evals/demo/fixtures/[^/]+\.jsonl$''']
+regexes = ['''^[0-9a-f]{64}$''']
+
+[[allowlists]]
+description = """A malformed-key test case list (module E2): the generic rule reads the literal \
+`rf_short_secret", ...` as an assignment. Pinned to that file and that literal."""
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^packages/core/tests/module_e2/test_e2_auth_unit\.py$''']
+regexTarget = "line"
+regexes = ['''"Bearer x", "rf_short_secret", "rf_ABCDEF0123456789_"''']

@@ -1,0 +1,24 @@
+[project]
+name = "ragforge-mcp"
+version = "0.1.0"
+description = "RAGForge MCP server: a thin client of the public API (ADR-0005). Built in Phase 3."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "ragforge-client",
+    "ragforge-contracts",
+    "mcp>=2,<3",
+    "httpx>=0.27",
+    "pydantic>=2.7",
+    "anyio>=4",
+    "uvicorn>=0.30",
+]
+
+[project.scripts]
+ragforge-mcp = "ragforge_mcp.server:main"
+
+[build-system]
+requires = ["hatchling==1.32.4"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ragforge_mcp"]

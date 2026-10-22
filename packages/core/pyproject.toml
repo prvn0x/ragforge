@@ -1,0 +1,52 @@
+[project]
+name = "ragforge-core"
+version = "0.1.0"
+description = "RAGForge server: domain, services, RAG, agent, adapters, and the api/worker/migrate apps"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "ragforge-contracts",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "psycopg[binary,pool]>=3.2.3",
+    "alembic>=1.14",
+    "pgvector>=0.3.6",
+    "structlog>=24.4",
+    "httpx>=0.27",
+    "cryptography>=43",
+    "python-multipart>=0.0.18",  # FastAPI UploadFile (POST /v1/collections/{id}/files)
+    "prometheus-client>=0.21,<1",
+]
+
+[project.optional-dependencies]
+# Phase 1 agents add their libraries here (owner noted per extra).
+agent = [  # module D
+    "markdown-it-py>=4.2",  # agent/structure.py: the CommonMark parse behind the citation guarantee
+    "linkify-it-py>=2",  # same autolink detection as the sanitizer oracle (handoff P2B-AG request 8)
+    "langgraph>=1.0,<2",
+    # Pinned exactly: FencedPostgresSaver and slot 0005 couple to its internals (handoff D2).
+    "langgraph-checkpoint-postgres==3.2.0",
+    "langgraph-checkpoint>=4,<5",
+    "langchain-core>=1.0",
+]
+ingest = [  # modules B and C
+    # Exact: the adapter relies on Ranker writing nothing when the model dir exists (read-only fs).
+    "flashrank==0.2.10",
+]
+
+[project.scripts]
+ragforge-api = "ragforge_core.apps.api.main:run"
+ragforge-worker = "ragforge_core.apps.worker.main:run"
+ragforge-migrate = "ragforge_core.apps.migrate.main:run"
+ragforge-index = "ragforge_core.apps.index.main:run"
+ragforge-db-bootstrap = "ragforge_core.apps.db_bootstrap.main:run"
+ragforge-admin = "ragforge_core.apps.api.admin:run"
+
+[build-system]
+requires = ["hatchling==1.32.4"]  # pinned: the image build must not pick up a new backend
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ragforge_core"]

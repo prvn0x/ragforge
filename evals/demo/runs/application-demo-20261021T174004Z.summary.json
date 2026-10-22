@@ -1,0 +1,51 @@
+{
+  "schema_version": 2,
+  "run_id": "application-demo-20261021T174004Z",
+  "eval_kind": "application",
+  "header_digest": "6d992b2721a2d8a87e4bb613e33327f1902d514a6e83eac6318d5c337d72369d",
+  "metrics": [
+    {
+      "name": "application.abstain_correct",
+      "value": 1.0,
+      "ci_low": 0.8388748419471808,
+      "ci_high": 1.0,
+      "n": 20,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "application.correct",
+      "value": 0.9,
+      "ci_low": 0.6989663547715129,
+      "ci_high": 0.9721335187862318,
+      "n": 20,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "application.tokens_per_question",
+      "value": 1974.0,
+      "ci_low": 1377.93,
+      "ci_high": 2514.5325,
+      "n": 20,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "bootstrap over questions"
+    },
+    {
+      "name": "application.verified",
+      "value": 0.9,
+      "ci_low": 0.6989663547715129,
+      "ci_high": 0.9721335187862318,
+      "n": 20,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    }
+  ],
+  "stale_items": 0,
+  "errors_ours": 0,
+  "errors_transient": 0
+}

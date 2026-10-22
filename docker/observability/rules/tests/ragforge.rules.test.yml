@@ -1,0 +1,830 @@
+# promtool unit tests for ../ragforge.rules.yml (run by packages/core/tests/test_obs_stack_promtool.py
+# with the pinned prom/prometheus image). Every alert has a FIRING case and at least one QUIET
+# case; the quiet cases are the one-user situations the volume guards exist for.
+# Series values: `a+bxN` is N+1 samples from a stepping by b; `_xN` is N missing samples.
+rule_files:
+  - ../ragforge.rules.yml
+evaluation_interval: 1m
+
+tests:
+  # ======================================================================= latency (hosted)
+  - name: hosted latency fires when over 5% of turns exceed 8 s at real volume
+    interval: 1m
+    input_series:
+      # 2 turns a minute, only 1 of them under 8 s: 50% slow, far above the 5% budget. The
+      # condition holds from 10 min (20 turns), so `for: 30m` fires it at 40 min.
+      - series: 'ragforge_chat_turn_duration_seconds_count{surface="chat",provider="gemini",job="ragforge-api",instance="api:9101"}'
+        values: '0+2x120'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="gemini",le="8.0",job="ragforge-api",instance="api:9101"}'
+        values: '0+1x120'
+    alert_rule_test:
+      - eval_time: 20m  # condition true, but `for: 30m` has not elapsed
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts:
+          - exp_labels: {severity: warning, provider: gemini}
+            exp_annotations: &hosted_gemini
+              summary: "Chat p95 above 8 s on hosted provider gemini"
+              description: "More than 5% of owner chat turns on gemini took over 8 s in the last 6 h (at least 3 such turns and 20 turns in all), for 30 min. The DESIGN §2 hosted SLO is 5 s, which is not met today (measured p95 about 6.6 s); this fires on a regression past that baseline. Check the Models row: if one prompt's latency rose, look at that provider's status page and at rate-limit retries; if retrieval is slow, check the Retrieval row and Postgres."
+      # The same slow turns on the local provider are not hosted turns.
+      - eval_time: 45m
+        alertname: RagforgeChatLatencyLocalHigh
+        exp_alerts: []
+
+  - name: hosted latency stays quiet for one user's three slow turns an hour
+    interval: 1m
+    input_series:
+      # 3 turns an hour, ALL slower than 8 s: a 100% slow share, but 6 turns are under the 20
+      # volume guard.
+      - series: 'ragforge_chat_turn_duration_seconds_count{surface="chat",provider="gemini",job="ragforge-api",instance="api:9101"}'
+        values: '0x19 1x19 2x19 3x19 4x19 5x19 6x19'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="gemini",le="8.0",job="ragforge-api",instance="api:9101"}'
+        values: '0x139'
+    alert_rule_test:
+      - eval_time: 130m
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts: []
+
+  - name: hosted latency stays quiet when slow turns are within the 5% budget
+    interval: 1m
+    input_series:
+      # 50 turns a minute, 1 of them slow: 2% slow.
+      - series: 'ragforge_chat_turn_duration_seconds_count{surface="chat",provider="gemini",job="ragforge-api",instance="api:9101"}'
+        values: '0+50x120'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="gemini",le="8.0",job="ragforge-api",instance="api:9101"}'
+        values: '0+49x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts: []
+
+  - name: hosted latency fires just over the 5% budget (7% slow)
+    interval: 1m
+    input_series:
+      # 100 turns a minute, 93 under 8 s. Pins the threshold from above: `> 0.10` stays quiet.
+      - series: 'ragforge_chat_turn_duration_seconds_count{surface="chat",provider="gemini",job="ragforge-api",instance="api:9101"}'
+        values: '0+100x120'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="gemini",le="8.0",job="ragforge-api",instance="api:9101"}'
+        values: '0+93x120'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts:
+          - exp_labels: {severity: warning, provider: gemini}
+            exp_annotations: *hosted_gemini
+
+  - name: hosted latency stays quiet just under the 5% budget (4% slow)
+    interval: 1m
+    input_series:
+      # 100 turns a minute, 96 under 8 s. Pins the threshold from below: `> 0.03` fires.
+      - series: 'ragforge_chat_turn_duration_seconds_count{surface="chat",provider="gemini",job="ragforge-api",instance="api:9101"}'
+        values: '0+100x120'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="gemini",le="8.0",job="ragforge-api",instance="api:9101"}'
+        values: '0+96x120'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts: []
+
+  # The one-user guards (rules header): a step at 101 min from 0, so increase() over 6 h is
+  # exactly the step (no extrapolation), and the condition, if true, holds from 101 min.
+  - name: hosted latency stays quiet for 1 slow turn out of 6
+    interval: 1m
+    input_series:
+      # 17% slow, but 1 slow turn and 6 in all: under both the count floor and the volume guard.
+      - series: 'ragforge_chat_turn_duration_seconds_count{surface="chat",provider="gemini",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 6x300'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="gemini",le="8.0",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 5x300'
+    alert_rule_test:
+      - eval_time: 140m
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts: []
+
+  - name: hosted latency stays quiet for 1 slow turn out of 20
+    interval: 1m
+    input_series:
+      - series: 'ragforge_chat_turn_duration_seconds_count{surface="chat",provider="gemini",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 20x300'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="gemini",le="8.0",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 19x300'
+    alert_rule_test:
+      - eval_time: 140m
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts: []
+
+  - name: hosted latency stays quiet for 2 slow turns out of 20 (the count floor alone)
+    interval: 1m
+    input_series:
+      # 10% slow at the volume guard: only the 3-turn floor keeps it quiet (`>= 2` fires).
+      - series: 'ragforge_chat_turn_duration_seconds_count{surface="chat",provider="gemini",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 20x300'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="gemini",le="8.0",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 18x300'
+    alert_rule_test:
+      - eval_time: 140m
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts: []
+
+  - name: hosted latency fires for 3 slow turns out of 20 (at least 3, over 5%)
+    interval: 1m
+    input_series:
+      # 15% slow, exactly at both guards: pins the floor (`>= 4` stays quiet) and the volume
+      # guard (`>= 21` stays quiet) from above.
+      - series: 'ragforge_chat_turn_duration_seconds_count{surface="chat",provider="gemini",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 20x300'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="gemini",le="8.0",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 17x300'
+    alert_rule_test:
+      - eval_time: 125m  # true for 24 min: pending
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts: []
+      - eval_time: 140m
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts:
+          - exp_labels: {severity: warning, provider: gemini}
+            exp_annotations: *hosted_gemini
+
+  - name: hosted latency stays quiet for 3 slow turns out of 19 (the volume guard alone)
+    interval: 1m
+    input_series:
+      # 16% slow and 3 slow turns, one turn under the guard: pins `>= 20` from below.
+      - series: 'ragforge_chat_turn_duration_seconds_count{surface="chat",provider="gemini",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 19x300'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="gemini",le="8.0",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 16x300'
+    alert_rule_test:
+      - eval_time: 140m
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts: []
+
+  - name: hosted turns between 5 s and 8 s (the measured baseline) stay quiet
+    interval: 1m
+    input_series:
+      # Every turn takes 5..8 s: over the 5 s SLO (not met today), under the 8 s alert edge.
+      - series: 'ragforge_chat_turn_duration_seconds_count{surface="chat",provider="gemini",job="ragforge-api",instance="api:9101"}'
+        values: '0+2x120'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="gemini",le="5.0",job="ragforge-api",instance="api:9101"}'
+        values: '0x120'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="gemini",le="8.0",job="ragforge-api",instance="api:9101"}'
+        values: '0+2x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts: []
+
+  - name: eval traffic never moves the owner's latency alert
+    interval: 1m
+    input_series:
+      - series: 'ragforge_chat_turn_duration_seconds_count{surface="eval",provider="gemini",job="ragforge-api",instance="api:9101"}'
+        values: '0+5x120'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="eval",provider="gemini",le="8.0",job="ragforge-api",instance="api:9101"}'
+        values: '0x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts: []
+
+  # ======================================================================= latency (local)
+  - name: local latency uses the 12 s edge, not the hosted 5 s one
+    interval: 1m
+    input_series:
+      # Every turn takes 8..12 s: past the hosted edges, within the local SLO.
+      - series: 'ragforge_chat_turn_duration_seconds_count{surface="chat",provider="ollama",job="ragforge-api",instance="api:9101"}'
+        values: '0+1x120'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="ollama",le="5.0",job="ragforge-api",instance="api:9101"}'
+        values: '0x120'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="ollama",le="8.0",job="ragforge-api",instance="api:9101"}'
+        values: '0x120'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="ollama",le="12.0",job="ragforge-api",instance="api:9101"}'
+        values: '0+1x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: RagforgeChatLatencyLocalHigh
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: RagforgeChatLatencyHostedHigh
+        exp_alerts: []
+
+  - name: local latency fires when over 5% of turns exceed 12 s at real volume
+    interval: 1m
+    input_series:
+      - series: 'ragforge_chat_turn_duration_seconds_count{surface="chat",provider="ollama",job="ragforge-api",instance="api:9101"}'
+        values: '0+1x120'
+      - series: 'ragforge_chat_turn_duration_seconds_bucket{surface="chat",provider="ollama",le="12.0",job="ragforge-api",instance="api:9101"}'
+        values: '0x120'
+    alert_rule_test:
+      # 1 slow turn a minute: the guards hold from 20 min (20 turns), so it fires at 50 min.
+      - eval_time: 45m
+        alertname: RagforgeChatLatencyLocalHigh
+        exp_alerts: []
+      - eval_time: 60m
+        alertname: RagforgeChatLatencyLocalHigh
+        exp_alerts:
+          - exp_labels: {severity: warning, provider: ollama}
+            exp_annotations:
+              summary: "Chat p95 above 12 s on local provider ollama"
+              description: "More than 5% of owner chat turns on local Ollama took over 12 s in the last 6 h (at least 3 such turns and 20 turns in all; DESIGN §2 local 3B SLO), for 30 min. Usually a model reload: check that OLLAMA_MAX_LOADED_MODELS >= 2 (make doctor), that nothing else holds the GPU, and that the chat model is the 3B one."
+
+  # ======================================================================= verified share
+  - name: verified share fires when no answered turn is verified, even with no verified series
+    interval: 1m
+    input_series:
+      # 10 answered turns an hour for 7 h, all unsupported. No `verified` series ever exists, so
+      # this also proves the `or vector(0)` numerator.
+      - series: 'ragforge_verification_total{surface="chat",status="unsupported",job="ragforge-api",instance="api:9101"}'
+        values: '0+0.1666x420'
+    alert_rule_test:
+      - eval_time: 400m
+        alertname: RagforgeVerifiedShareLow
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations: &verified_low
+              summary: "Under half of answered owner turns were verified (6 h)"
+              description: "Fewer than 50% of answered owner chat turns were verified over 6 h (abstain, refusal and error turns are not counted; at least 30 answered turns, i.e. 5 per hour). A drift signal: check the verification mix and flagged-claim reasons on the board, then whether the chat model or prompt version changed, and run make eval-gate."
+
+  - name: verified share stays quiet for a light day of mostly unsupported answers
+    interval: 1m
+    input_series:
+      # 3 answered turns an hour (18 in 6 h, under the 30 guard), all unsupported.
+      - series: 'ragforge_verification_total{surface="chat",status="unsupported",job="ragforge-api",instance="api:9101"}'
+        values: '0+0.05x420'
+    alert_rule_test:
+      - eval_time: 400m
+        alertname: RagforgeVerifiedShareLow
+        exp_alerts: []
+
+  - name: verified share stays quiet when most answers verify, and ignores eval traffic
+    interval: 1m
+    input_series:
+      - series: 'ragforge_verification_total{surface="chat",status="verified",job="ragforge-api",instance="api:9101"}'
+        values: '0+0.12x420'
+      - series: 'ragforge_verification_total{surface="chat",status="partial",job="ragforge-api",instance="api:9101"}'
+        values: '0+0.05x420'
+      # A big eval run that verifies nothing must not drag the owner's share down.
+      - series: 'ragforge_verification_total{surface="eval",status="unsupported",job="ragforge-api",instance="api:9101"}'
+        values: '0+5x420'
+    alert_rule_test:
+      - eval_time: 400m
+        alertname: RagforgeVerifiedShareLow
+        exp_alerts: []
+
+  - name: verified share fires at 48% verified, only after its 10 min grace
+    interval: 1m
+    input_series:
+      # A burst of 50 answered turns at 101 min, 24 verified: 48%. Every series starts at 0, so
+      # increase() over 6 h is exactly the step (no extrapolation) and the condition starts
+      # exactly at 101 min. Pins `< 0.5` from above (`< 0.45` stays quiet) and the `for: 10m`.
+      - series: 'ragforge_verification_total{surface="chat",status="verified",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 24x300'
+      - series: 'ragforge_verification_total{surface="chat",status="unsupported",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 26x300'
+    alert_rule_test:
+      - eval_time: 105m  # condition true for 4 min: pending only
+        alertname: RagforgeVerifiedShareLow
+        exp_alerts: []
+      - eval_time: 115m
+        alertname: RagforgeVerifiedShareLow
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations: *verified_low
+
+  - name: verified share stays quiet at 52% verified
+    interval: 1m
+    input_series:
+      # The same 50-turn burst, 26 verified. Pins `< 0.5` from below (`< 0.55` fires).
+      - series: 'ragforge_verification_total{surface="chat",status="verified",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 26x300'
+      - series: 'ragforge_verification_total{surface="chat",status="unsupported",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 24x300'
+    alert_rule_test:
+      - eval_time: 130m
+        alertname: RagforgeVerifiedShareLow
+        exp_alerts: []
+
+  # ======================================================================= quota
+  - name: quota fires on a counter that already existed
+    interval: 1m
+    input_series:
+      - series: 'up{job="ragforge-api",instance="api:9101"}'
+        values: '1x60'
+      - series: 'ragforge_llm_requests_total{provider="gemini",model="m",prompt="chat@1",outcome="quota_exhausted",job="ragforge-api",instance="api:9101"}'
+        values: '0x20 1x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: RagforgeLlmQuotaExhausted
+        exp_alerts:
+          - exp_labels: {severity: critical, provider: gemini}
+            exp_annotations: &quota_gemini
+              summary: "gemini quota exhausted"
+              description: "A model call to gemini was refused for quota in the last 10 min, so chat and verification fail until the quota resets. Check the provider console's quota page, or switch to local Ollama with make setup."
+      - eval_time: 45m  # the window has passed with no new refusal
+        alertname: RagforgeLlmQuotaExhausted
+        exp_alerts: []
+
+  - name: quota fires on a counter born at its first refusal (increase alone misses it)
+    interval: 1m
+    input_series:
+      - series: 'up{job="ragforge-api",instance="api:9101"}'
+        values: '1x60'
+      # The labelled series appears only at the first refusal, already at 1.
+      - series: 'ragforge_llm_requests_total{provider="gemini",model="m",prompt="chat@1",outcome="quota_exhausted",job="ragforge-api",instance="api:9101"}'
+        values: '_x20 1x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: RagforgeLlmQuotaExhausted
+        exp_alerts:
+          - exp_labels: {severity: critical, provider: gemini}
+            exp_annotations: *quota_gemini
+      - eval_time: 45m
+        alertname: RagforgeLlmQuotaExhausted
+        exp_alerts: []
+
+  - name: quota stays quiet on a fresh Prometheus that finds an old refusal count
+    interval: 1m
+    input_series:
+      # `make obs-up` long after yesterday's refusal: the target and the count appear together.
+      - series: 'up{job="ragforge-api",instance="api:9101"}'
+        values: '1x30'
+      - series: 'ragforge_llm_requests_total{provider="gemini",model="m",prompt="chat@1",outcome="quota_exhausted",job="ragforge-api",instance="api:9101"}'
+        values: '3x30'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: RagforgeLlmQuotaExhausted
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: RagforgeLlmQuotaExhausted
+        exp_alerts: []
+
+  # ======================================================================= rate limits
+  - name: rate limits fire above 5 in 10 min
+    interval: 1m
+    input_series:
+      - series: 'up{job="ragforge-api",instance="api:9101"}'
+        values: '1x60'
+      - series: 'ragforge_llm_requests_total{provider="gemini",model="m",prompt="chat@1",outcome="rate_limited",job="ragforge-api",instance="api:9101"}'
+        values: '0x20 1+1x10 11x20'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: RagforgeLlmRateLimited
+        exp_alerts:
+          - exp_labels: {severity: warning, provider: gemini}
+            exp_annotations: &rate_gemini
+              summary: "gemini rate limiting (over 5 in 10 min)"
+              description: "More than 5 model calls to gemini were rate limited (429) in 10 min. Check the Models row for which prompt drives the calls (an eval run or the extras path are the usual suspects) and slow it down; persistent 429s mean the plan's RPM is too low for this use."
+
+  - name: rate limits stay quiet for a few 429s that retries absorbed
+    interval: 1m
+    input_series:
+      - series: 'up{job="ragforge-api",instance="api:9101"}'
+        values: '1x60'
+      - series: 'ragforge_llm_requests_total{provider="gemini",model="m",prompt="chat@1",outcome="rate_limited",job="ragforge-api",instance="api:9101"}'
+        values: '0x20 1 2 3 3x30'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: RagforgeLlmRateLimited
+        exp_alerts: []
+
+  - name: rate limits stay quiet at exactly 5 in 10 min
+    interval: 1m
+    input_series:
+      # A step from 0 to 5 at 21 min: increase() over 10 min is exactly 5 (the window's first
+      # sample is 0, so it is not extrapolated). "More than 5" means 5 is quiet: `>= 5` fires.
+      - series: 'up{job="ragforge-api",instance="api:9101"}'
+        values: '1x60'
+      - series: 'ragforge_llm_requests_total{provider="gemini",model="m",prompt="chat@1",outcome="rate_limited",job="ragforge-api",instance="api:9101"}'
+        values: '0x20 5x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: RagforgeLlmRateLimited
+        exp_alerts: []
+
+  - name: rate limits fire at 6 in 10 min
+    interval: 1m
+    input_series:
+      # One more than the threshold: pins it from above (`> 6` stays quiet).
+      - series: 'up{job="ragforge-api",instance="api:9101"}'
+        values: '1x60'
+      - series: 'ragforge_llm_requests_total{provider="gemini",model="m",prompt="chat@1",outcome="rate_limited",job="ragforge-api",instance="api:9101"}'
+        values: '0x20 6x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: RagforgeLlmRateLimited
+        exp_alerts:
+          - exp_labels: {severity: warning, provider: gemini}
+            exp_annotations: *rate_gemini
+
+  # ======================================================================= HTTP 5xx
+  - name: 5xx fires above 2% at real volume, for 15 min
+    interval: 1m
+    input_series:
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="2xx",job="ragforge-api",instance="api:9101"}'
+        values: '0+9x90'
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="5xx",job="ragforge-api",instance="api:9101"}'
+        values: '0+1x90'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: RagforgeHttp5xxHigh
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: RagforgeHttp5xxHigh
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations: &http_5xx
+              summary: "API 5xx above 2% (6 h), for 15 min"
+              description: "More than 2% of API requests answered 5xx over the last 6 h (at least 3 failures and 20 requests in all; client disconnects are not counted). Run make logs SERVICE=api and look for the request ids of the failures; the HTTP panel shows which route."
+
+  - name: 5xx stays quiet for two failed requests in a quiet hour
+    interval: 1m
+    input_series:
+      # 2 requests in the hour, both 5xx: 100%, but under the 3-failure floor and the volume guard.
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="5xx",job="ragforge-api",instance="api:9101"}'
+        values: '0x10 1x20 2x60'
+    alert_rule_test:
+      - eval_time: 60m
+        alertname: RagforgeHttp5xxHigh
+        exp_alerts: []
+
+  - name: 5xx stays quiet for 1 failed request out of 20
+    interval: 1m
+    input_series:
+      # 5% failed (over the 2% budget) at the volume guard: only the 3-failure floor keeps it
+      # quiet. Steps at 101 min from 0, so increase() over 6 h is exact.
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="2xx",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 19x300'
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="5xx",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 1x300'
+    alert_rule_test:
+      - eval_time: 140m
+        alertname: RagforgeHttp5xxHigh
+        exp_alerts: []
+
+  - name: 5xx stays quiet for 2 failed requests out of 20 (the floor from below)
+    interval: 1m
+    input_series:
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="2xx",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 18x300'
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="5xx",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 2x300'
+    alert_rule_test:
+      - eval_time: 140m
+        alertname: RagforgeHttp5xxHigh
+        exp_alerts: []
+
+  - name: 5xx fires for 3 failed requests out of 20 (at least 3, over 2%)
+    interval: 1m
+    input_series:
+      # Exactly at both guards: pins the floor (`>= 4`) and the volume guard (`>= 21`) from above.
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="2xx",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 17x300'
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="5xx",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 3x300'
+    alert_rule_test:
+      - eval_time: 110m  # true for 9 min: `for: 15m` holds it pending
+        alertname: RagforgeHttp5xxHigh
+        exp_alerts: []
+      - eval_time: 125m
+        alertname: RagforgeHttp5xxHigh
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations: *http_5xx
+
+  - name: 5xx stays quiet for 3 failed requests out of 19 (the volume guard alone)
+    interval: 1m
+    input_series:
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="2xx",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 16x300'
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="5xx",job="ragforge-api",instance="api:9101"}'
+        values: '0x100 3x300'
+    alert_rule_test:
+      - eval_time: 140m
+        alertname: RagforgeHttp5xxHigh
+        exp_alerts: []
+
+  - name: client disconnects do not dilute the 5xx share
+    interval: 1m
+    input_series:
+      # 1 of 21 answered requests fails (4.8%); counting 100 aborts a minute would hide it (0.8%).
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="2xx",job="ragforge-api",instance="api:9101"}'
+        values: '0+20x90'
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="5xx",job="ragforge-api",instance="api:9101"}'
+        values: '0+1x90'
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="disconnected",job="ragforge-api",instance="api:9101"}'
+        values: '0+100x90'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: RagforgeHttp5xxHigh
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations: *http_5xx
+
+  - name: 5xx stays quiet under 2% at real volume
+    interval: 1m
+    input_series:
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="2xx",job="ragforge-api",instance="api:9101"}'
+        values: '0+99x90'
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="5xx",job="ragforge-api",instance="api:9101"}'
+        values: '0+1x90'
+    alert_rule_test:
+      - eval_time: 60m
+        alertname: RagforgeHttp5xxHigh
+        exp_alerts: []
+
+  - name: 5xx fires just over 2% (2.5%)
+    interval: 1m
+    input_series:
+      # 1000 requests a minute, 25 of them 5xx. Pins `> 0.02` from above (`> 0.03` stays quiet).
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="2xx",job="ragforge-api",instance="api:9101"}'
+        values: '0+975x90'
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="5xx",job="ragforge-api",instance="api:9101"}'
+        values: '0+25x90'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: RagforgeHttp5xxHigh
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations: *http_5xx
+
+  - name: 5xx stays quiet just under 2% (1.9%)
+    interval: 1m
+    input_series:
+      # 1000 requests a minute, 19 of them 5xx. Pins `> 0.02` from below (`> 0.015` fires).
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="2xx",job="ragforge-api",instance="api:9101"}'
+        values: '0+981x90'
+      - series: 'ragforge_http_requests_total{route="/v1/chat",status_class="5xx",job="ragforge-api",instance="api:9101"}'
+        values: '0+19x90'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: RagforgeHttp5xxHigh
+        exp_alerts: []
+      - eval_time: 60m
+        alertname: RagforgeHttp5xxHigh
+        exp_alerts: []
+
+  # ======================================================================= sync freshness
+  - name: stale sync fires after 15 more minutes over 30 min
+    interval: 1m
+    input_series:
+      # 25 min stale and growing: crosses 1800 s at 5 min.
+      - series: 'ragforge_sync_oldest_success_age_seconds{connector_kind="notion",job="ragforge-api",instance="api:9101"}'
+        values: '1500+60x60'
+    alert_rule_test:
+      - eval_time: 15m  # over 30 min, still inside `for: 15m`
+        alertname: RagforgeSyncStale
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: RagforgeSyncStale
+        exp_alerts:
+          - exp_labels: {severity: warning, connector_kind: notion}
+            exp_annotations:
+              summary: "notion sync stale for over 30 min"
+              description: "The stalest enabled notion connector has not synced successfully for over 30 min. Check make logs SERVICE=worker for auth errors (an expired or revoked Notion token) or 429 storms, and the Notion requests panel for the status mix."
+
+  - name: stale sync stays quiet when the laptop wakes and the poller catches up
+    interval: 1m
+    input_series:
+      # Asleep for 2 h: the age reads 7200 s on wake, then the next poll succeeds.
+      - series: 'ragforge_sync_oldest_success_age_seconds{connector_kind="notion",job="ragforge-api",instance="api:9101"}'
+        values: '7200+60x5 30+60x30'
+    alert_rule_test:
+      - eval_time: 4m  # every connector looks hours stale right after wake: pending only
+        alertname: RagforgeSyncStale
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: RagforgeSyncStale
+        exp_alerts: []
+
+  # ======================================================================= queue age
+  - name: interactive queue fires after 5 min over 120 s
+    interval: 1m
+    input_series:
+      - series: 'ragforge_jobs_oldest_queued_age_seconds{priority="interactive",job="ragforge-api",instance="api:9101"}'
+        values: '300+60x20'
+      - series: 'ragforge_jobs_ready{priority="interactive",job="ragforge-api",instance="api:9101"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: RagforgeInteractiveQueueStuck
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: RagforgeInteractiveQueueStuck
+        exp_alerts:
+          - exp_labels: {severity: warning, priority: interactive}
+            exp_annotations:
+              summary: "interactive jobs waiting over 2 min"
+              description: "A READY interactive job has gone unclaimed and the oldest queued one has waited over 120 s for 5 min (DESIGN §2: interactive/webhook wait is bounded; backfill and jobs in retry backoff are exempt). Check the worker is up and claiming (make ps, make logs SERVICE=worker) and whether expired leases are piling up on the Jobs row."
+
+  - name: an interactive job in retry backoff (queued, not ready) is quiet
+    interval: 1m
+    input_series:
+      - series: 'ragforge_jobs_oldest_queued_age_seconds{priority="interactive",job="ragforge-api",instance="api:9101"}'
+        values: '300+60x30'
+      - series: 'ragforge_jobs_ready{priority="interactive",job="ragforge-api",instance="api:9101"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: RagforgeInteractiveQueueStuck
+        exp_alerts: []
+
+  - name: an hours-old backfill queue is exempt
+    interval: 1m
+    input_series:
+      - series: 'ragforge_jobs_oldest_queued_age_seconds{priority="backfill",job="ragforge-api",instance="api:9101"}'
+        values: '10000+60x30'
+      - series: 'ragforge_jobs_ready{priority="backfill",job="ragforge-api",instance="api:9101"}'
+        values: '3x30'
+      - series: 'ragforge_jobs_oldest_queued_age_seconds{priority="webhook",job="ragforge-api",instance="api:9101"}'
+        values: '5x30'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: RagforgeInteractiveQueueStuck
+        exp_alerts: []
+
+  # ======================================================================= dead jobs
+  - name: dead jobs fire when the dead gauge rises
+    interval: 1m
+    input_series:
+      - series: 'ragforge_jobs_dead{job="ragforge-api",instance="api:9101"}'
+        values: '0x20 1x40'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: RagforgeDeadJobsRising
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: "New dead jobs in the last 15 min"
+              description: "The number of jobs that went dead (retries exhausted) in the last 24 h rose in the last 15 min. Find them with make psql: rf.jobs_history (where the upkeep moves a finished job after 5 min) and rf.jobs, status dead, newest finished_at first; read last_error and fix the cause before requeueing, or they die again."
+      - eval_time: 45m  # still 1 dead job, but nothing NEW: the board shows the count
+        alertname: RagforgeDeadJobsRising
+        exp_alerts: []
+
+  - name: a dead job archived to rf.jobs_history keeps the count, so nothing re-fires or hides
+    interval: 1m
+    input_series:
+      # The death at 21 min fires; the upkeep's archive at ~26 min no longer drops the gauge
+      # (migration 0014 counts the history too), and a second death at 61 min fires again.
+      - series: 'ragforge_jobs_dead{job="ragforge-api",instance="api:9101"}'
+        values: '0x20 1x39 2x20'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: RagforgeDeadJobsRising
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations: &dead_rising
+              summary: "New dead jobs in the last 15 min"
+              description: "The number of jobs that went dead (retries exhausted) in the last 24 h rose in the last 15 min. Find them with make psql: rf.jobs_history (where the upkeep moves a finished job after 5 min) and rf.jobs, status dead, newest finished_at first; read last_error and fix the cause before requeueing, or they die again."
+      - eval_time: 50m
+        alertname: RagforgeDeadJobsRising
+        exp_alerts: []
+      - eval_time: 65m
+        alertname: RagforgeDeadJobsRising
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations: *dead_rising
+
+  - name: an old, steady dead count stays quiet
+    interval: 1m
+    input_series:
+      - series: 'ragforge_jobs_dead{job="ragforge-api",instance="api:9101"}'
+        values: '3x60'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: RagforgeDeadJobsRising
+        exp_alerts: []
+
+  - name: a requeue then a new death inside the window still fires
+    interval: 1m
+    input_series:
+      # 1 dead job, requeued at 21 min (0), and a NEW job dies at 24 min (1 again). Comparing
+      # now (1) against 15 min ago (1) misses it.
+      - series: 'ragforge_jobs_dead{job="ragforge-api",instance="api:9101"}'
+        values: '1x20 0x3 1x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: RagforgeDeadJobsRising
+        exp_alerts:
+          - exp_labels: {severity: warning}
+            exp_annotations:
+              summary: "New dead jobs in the last 15 min"
+              description: "The number of jobs that went dead (retries exhausted) in the last 24 h rose in the last 15 min. Find them with make psql: rf.jobs_history (where the upkeep moves a finished job after 5 min) and rf.jobs, status dead, newest finished_at first; read last_error and fix the cause before requeueing, or they die again."
+      - eval_time: 45m
+        alertname: RagforgeDeadJobsRising
+        exp_alerts: []
+
+  - name: requeueing dead jobs (a falling count) stays quiet
+    interval: 1m
+    input_series:
+      - series: 'ragforge_jobs_dead{job="ragforge-api",instance="api:9101"}'
+        values: '2x10 1x10 0x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: RagforgeDeadJobsRising
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: RagforgeDeadJobsRising
+        exp_alerts: []
+
+  # ======================================================================= DB-gauge read health
+  - name: DB gauges missing from a healthy scrape fires after 10 min
+    interval: 1m
+    input_series:
+      - series: 'up{job="ragforge-api",instance="api:9101"}'
+        values: '1x50'
+      # The rf_metrics read starts failing at 11 min: the gauges are left out of a successful
+      # scrape, so Prometheus writes a staleness marker at once (`stale`) and absent() is true
+      # from 11 min, not after the 5 min lookback. Fires at 21 min.
+      - series: 'ragforge_jobs_dead{job="ragforge-api",instance="api:9101"}'
+        values: '0x10 stale'
+    alert_rule_test:
+      - eval_time: 14m  # absent for 3 min: `for: 10m` holds it pending
+        alertname: RagforgeDbGaugesMissing
+        exp_alerts: []
+      - eval_time: 20m  # absent for 9 min: still pending
+        alertname: RagforgeDbGaugesMissing
+        exp_alerts: []
+      - eval_time: 22m
+        alertname: RagforgeDbGaugesMissing
+        exp_alerts:
+          - exp_labels: {severity: critical}
+            exp_annotations:
+              summary: "DB-derived gauges missing: queue, dead-job and sync alerts are blind"
+              description: "The API is scraped but has served no queue gauges for 10 min: its rf_metrics read of rf.queue_stats is failing, so RagforgeSyncStale, RagforgeInteractiveQueueStuck and RagforgeDeadJobsRising cannot fire. Run make logs SERVICE=api and look for metrics_collect_failed (its error type says which): Postgres down, a wrong rf_metrics password, migration 0013's view or 0014's function or their grants missing, or the 5 s statement timeout."
+
+  - name: DB gauges present stays quiet
+    interval: 1m
+    input_series:
+      - series: 'up{job="ragforge-api",instance="api:9101"}'
+        values: '1x40'
+      - series: 'ragforge_jobs_dead{job="ragforge-api",instance="api:9101"}'
+        values: '0x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: RagforgeDbGaugesMissing
+        exp_alerts: []
+
+  - name: an API that is down is TargetDown, not a missing-gauges alert
+    interval: 1m
+    input_series:
+      # Nothing scraped at all: the absence has an obvious cause, already alerted on.
+      - series: 'up{job="ragforge-api",instance="api:9101"}'
+        values: '0x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: RagforgeDbGaugesMissing
+        exp_alerts: []
+
+  # ======================================================================= scrape health
+  - name: a target that stops answering scrapes fires after 2 min
+    interval: 1m
+    input_series:
+      - series: 'up{job="ragforge-api",instance="api:9101"}'
+        values: '1x5 0x10'
+      - series: 'up{job="ragforge-worker",instance="10.0.0.7:9102"}'
+        values: '1x15'
+    alert_rule_test:
+      - eval_time: 6m  # the first failed scrape
+        alertname: RagforgeTargetDown
+        exp_alerts: []
+      - eval_time: 7m  # down for 1 min: `for: 2m` keeps one restart from paging
+        alertname: RagforgeTargetDown
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: RagforgeTargetDown
+        exp_alerts:
+          - exp_labels: {severity: critical, job: ragforge-api, instance: "api:9101"}
+            exp_annotations:
+              summary: "ragforge-api metrics target api:9101 is down"
+              description: "Prometheus cannot scrape api:9101 for 2 min, so every alert on its in-process metrics is blind (a failed DB-gauge read is a separate alert, RagforgeDbGaugesMissing, because the scrape itself still succeeds). Run make ps; if the service is up, check that its metrics port is listening on 0.0.0.0 inside the container."
+      - eval_time: 10m
+        alertname: RagforgeWorkerTargetsMissing
+        exp_alerts: []
+
+  - name: a worker that disappears from DNS fires the missing-target alert
+    interval: 1m
+    input_series:
+      - series: 'up{job="ragforge-api",instance="api:9101"}'
+        values: '1x30'
+      # The worker container stops at 6 min: DNS drops its record, Prometheus drops the target
+      # and writes a staleness marker at once, so absent() is true from 6 min (not after the
+      # 5 min lookback). `make up` recreating the worker (new IP) looks the same for a moment.
+      - series: 'up{job="ragforge-worker",instance="10.0.0.7:9102"}'
+        values: '1x5 stale'
+    alert_rule_test:
+      - eval_time: 9m  # missing for 3 min: `for: 5m` absorbs a restart or recreate
+        alertname: RagforgeWorkerTargetsMissing
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: RagforgeWorkerTargetsMissing
+        exp_alerts:
+          - exp_labels: {severity: critical, job: ragforge-worker}
+            exp_annotations:
+              summary: "No worker metrics target discovered"
+              description: "DNS discovery has found no worker for 5 min: no worker container is running, so nothing syncs or runs jobs. Run make ps and make logs SERVICE=worker, then make up."
+      - eval_time: 20m  # an absent series is not a down one
+        alertname: RagforgeTargetDown
+        exp_alerts: []

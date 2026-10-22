@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.1"
+          enable-cache: true
+      - name: Install
+        run: uv sync --all-packages --all-extras --frozen
+      - name: Lint
+        run: make lint
+      - name: Types (mypy --strict)
+        run: make typecheck
+      - name: Architecture contracts
+        run: make imports
+      - name: Tests (unit + integration via testcontainers)
+        run: make test
+
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build server image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: server
+          tags: ragforge/server:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Scan image (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ragforge/server:ci
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+      - name: Smoke test the full stack
+        run: |
+          ./scripts/bootstrap.sh
+          docker compose up --wait --wait-timeout 180 api worker
+          curl -fsS http://localhost:8000/readyz
+          docker compose down --volumes

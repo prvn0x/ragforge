@@ -1,0 +1,77 @@
+# Justified ignores for `make audit` (scripts/security/report.py enforces the shape).
+#
+# Policy (ADR-0018 Security 1-2):
+#   - pip-audit: every advisory blocks (PyPI advisories carry no severity). Fix by version bump.
+#   - Trivy: HIGH and CRITICAL block; MEDIUM/LOW are counted, not gated. Any secret blocks.
+#   - An ignore is for a finding with NO fix available, or a fix that cannot apply yet. It needs
+#     `reason` (why the risk is acceptable HERE) and `review_by` (a date). After that date the
+#     ignore stops hiding anything and the run fails until someone fixes or re-justifies it.
+#   - `packages` scopes an ignore to the packages named; the same CVE in a new package surfaces.
+#   - gitleaks findings are never ignored here: allowlist them in .gitleaks.toml.
+#
+# Shared context for the OS-package entries (the api/worker image `ragforge/server:dev`):
+# none of these packages is used by the application (Python + psycopg + httpx over TCP). The
+# container runs as uid 10001, read-only root filesystem, cap_drop ALL, no-new-privileges, no
+# published shell, and only mounts the uploads volume. Exploits below need a local attacker
+# running mount/nsenter/login, a crafted archive or partition table fed to a CLI tool, or a
+# crafted SQLite database: none of those inputs reach this image.
+#
+# Last scan: 2026-10-22, Trivy 0.75.0 (DB of that day).
+
+# ============================================================== present on BOTH bookworm and trixie
+
+[[ignore]]
+tool = "trivy"
+id = "CVE-2025-69720"
+packages = ["libncursesw6", "libtinfo6", "ncurses-base", "ncurses-bin"]
+review_by = 2027-01-31
+reason = "No Debian fix on 12 or 13. ncurses parses terminfo for interactive terminals; the services run headless with no TTY and no attacker-supplied terminfo."
+
+[[ignore]]
+tool = "trivy"
+id = "CVE-2026-16742"
+packages = ["libsystemd0", "libudev1"]
+review_by = 2027-01-31
+reason = "No Debian fix. The flaw is in systemd-homed, which is not installed or running in a container; only the client libraries are present."
+
+[[ignore]]
+tool = "trivy"
+id = "CVE-2026-54369"
+packages = ["libacl1"]
+review_by = 2027-01-31
+reason = "No Debian fix. Symlink traversal needs a privileged process applying ACLs on attacker-controlled paths; the app sets no ACLs and runs unprivileged on a read-only root."
+
+[[ignore]]
+tool = "trivy"
+id = "CVE-2026-76642"
+packages = ["bsdutils", "libblkid1", "liblastlog2-2", "libmount1", "libsmartcols1", "libuuid1", "login", "mount", "util-linux", "util-linux-extra"]
+review_by = 2027-01-31
+reason = "No Debian fix. Privileged X-mount post-hooks of the mount program; no mount runs in the container and it cannot gain privilege (non-root, no-new-privileges, cap_drop ALL)."
+
+[[ignore]]
+tool = "trivy"
+id = "CVE-2026-78408"
+packages = ["bsdutils", "libblkid1", "liblastlog2-2", "libmount1", "libsmartcols1", "libuuid1", "login", "mount", "util-linux", "util-linux-extra"]
+review_by = 2027-01-31
+reason = "No Debian fix. nsenter --join-cgroup needs root to begin with; the container user is uid 10001 with every capability dropped."
+
+[[ignore]]
+tool = "trivy"
+id = "CVE-2026-78409"
+packages = ["bsdutils", "libblkid1", "liblastlog2-2", "libmount1", "libsmartcols1", "libuuid1", "login", "mount", "util-linux", "util-linux-extra"]
+review_by = 2027-01-31
+reason = "No Debian fix. X-mount.subdir symlink escape in the mount program; nothing mounts inside the container and it cannot (no CAP_SYS_ADMIN)."
+
+[[ignore]]
+tool = "trivy"
+id = "CVE-2026-78410"
+packages = ["bsdutils", "libblkid1", "liblastlog2-2", "libmount1", "libsmartcols1", "libuuid1", "login", "mount", "util-linux", "util-linux-extra"]
+review_by = 2027-01-31
+reason = "No Debian fix. Restricted bind-mount redirection in the mount program; same as CVE-2026-78409, no mount capability in the container."
+
+[[ignore]]
+tool = "trivy"
+id = "CVE-2026-9538"
+packages = ["perl-base"]
+review_by = 2027-01-31
+reason = "Debian fix_deferred. Denial of service in Perl's Archive::Tar on a crafted tar; no Perl code runs in the image (perl-base is only there for dpkg)."

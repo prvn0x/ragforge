@@ -1,0 +1,11 @@
+{
+  "_comment": "Recorded Notion error bodies (object=error).",
+  "400": {"object": "error", "status": 400, "code": "validation_error", "message": "path failed validation: path.page_id should be a valid uuid", "request_id": "1d2e3f4a-5b6c-4d7e-8f9a-0b1c2d3e4f01"},
+  "401": {"object": "error", "status": 401, "code": "unauthorized", "message": "API token is invalid.", "request_id": "1d2e3f4a-5b6c-4d7e-8f9a-0b1c2d3e4f02"},
+  "403": {"object": "error", "status": 403, "code": "restricted_resource", "message": "API token does not have access to this resource.", "request_id": "1d2e3f4a-5b6c-4d7e-8f9a-0b1c2d3e4f03"},
+  "404": {"object": "error", "status": 404, "code": "object_not_found", "message": "Could not find page with ID: a7000000-0000-4000-8000-000000000009. Make sure the relevant pages and databases are shared with your integration.", "request_id": "1d2e3f4a-5b6c-4d7e-8f9a-0b1c2d3e4f04"},
+  "429": {"object": "error", "status": 429, "code": "rate_limited", "message": "You have been rate limited. Please try again in a few minutes.", "request_id": "1d2e3f4a-5b6c-4d7e-8f9a-0b1c2d3e4f05"},
+  "500": {"object": "error", "status": 500, "code": "internal_server_error", "message": "Unexpected error occurred.", "request_id": "1d2e3f4a-5b6c-4d7e-8f9a-0b1c2d3e4f06"},
+  "502": {"object": "error", "status": 502, "code": "bad_gateway", "message": "Notion encountered an issue while attempting to complete this request.", "request_id": "1d2e3f4a-5b6c-4d7e-8f9a-0b1c2d3e4f07"},
+  "503": {"object": "error", "status": 503, "code": "service_unavailable", "message": "Notion is unavailable. Please try again later.", "request_id": "1d2e3f4a-5b6c-4d7e-8f9a-0b1c2d3e4f08"}
+}

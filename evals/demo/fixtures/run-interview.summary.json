@@ -1,0 +1,81 @@
+{
+  "schema_version": 2,
+  "run_id": "golden-interview",
+  "eval_kind": "interview",
+  "header_digest": "2b44c4b9988176daae251deda09ee4992b0a272aae62a7cc52edc2b42b346ecd",
+  "metrics": [
+    {
+      "name": "interview.band.gold_ge_7",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 92,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "interview.band.wrong_le_3",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 92,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "interview.detection_given",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 92,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "interview.detection_kept",
+      "value": 0.75,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 92,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "interview.level.page_l",
+      "value": 397.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 92,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "interview.level.retest_sd",
+      "value": 0.9354143466934853,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 92,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "interview.ranking_accuracy",
+      "value": 0.9375,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 92,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    }
+  ],
+  "stale_items": 0,
+  "errors_ours": 0,
+  "errors_transient": 0
+}

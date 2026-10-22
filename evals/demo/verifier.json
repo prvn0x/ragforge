@@ -1,0 +1,540 @@
+{
+  "schema_version": 2,
+  "name": "demo",
+  "items": [
+    {
+      "id": "c-durability",
+      "source_id": "c-durability",
+      "question": "Which settings stop Acme losing acknowledged Kafka events?",
+      "answer": "Acme producers set `acks=all`, so a write is acknowledged only after every in-sync replica has it [S1]. With `min.insync.replicas=2` on the topic, a single broker loss never loses an acknowledged event [S1].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "kafka-producer-config.md"
+          },
+          "heading_path": [
+            "Kafka Producer Configuration"
+          ],
+          "display_sha256": "a76c1db620d73976ac9d24b5302098d85e540a8f9d541a8097ec9b9fe7d9f8b1",
+          "occurrence": 0
+        }
+      ],
+      "mutation": null,
+      "span": null,
+      "validity_check": null,
+      "owner_reviewed": false
+    },
+    {
+      "id": "c-ordering",
+      "source_id": "c-ordering",
+      "question": "How do you keep Kafka producer ordering with retries?",
+      "answer": "Retries can reorder records when more than one request is in flight [S1]. Setting `max.in.flight.requests.per.connection` to 1 gives strict ordering at a throughput cost [S1].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "kafka-producer-config.md"
+          },
+          "heading_path": [
+            "Kafka Producer Configuration"
+          ],
+          "display_sha256": "a76c1db620d73976ac9d24b5302098d85e540a8f9d541a8097ec9b9fe7d9f8b1",
+          "occurrence": 0
+        }
+      ],
+      "mutation": null,
+      "span": null,
+      "validity_check": null,
+      "owner_reviewed": false
+    },
+    {
+      "id": "c-aof",
+      "source_id": "c-aof",
+      "question": "How much data can Redis AOF lose?",
+      "answer": "With `appendfsync everysec`, at most about one second of writes is lost on a crash [S1].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "redis-persistence.md"
+          },
+          "heading_path": [
+            "Redis Persistence"
+          ],
+          "display_sha256": "6e80b39be8cdec31a15599db590cf5259a8ab9cf7225d7a3aaa113d1a0d471eb",
+          "occurrence": 0
+        }
+      ],
+      "mutation": null,
+      "span": null,
+      "validity_check": null,
+      "owner_reviewed": false
+    },
+    {
+      "id": "c-stampede",
+      "source_id": "c-stampede",
+      "question": "How does Acme avoid Redis stampedes?",
+      "answer": "Every key gets a TTL of 10 minutes plus random jitter of up to 60 seconds, so many keys never expire at the same moment [S1]. Acme guards hot keys with a short lock so only one request reloads it [S1].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "redis-caching.md"
+          },
+          "heading_path": [
+            "Redis Caching"
+          ],
+          "display_sha256": "85ccc9ebd017d2ff747fac62f4a30d3025a72b38fa9bc6b6e83d199170e7fb7a",
+          "occurrence": 0
+        }
+      ],
+      "mutation": null,
+      "span": null,
+      "validity_check": null,
+      "owner_reviewed": false
+    },
+    {
+      "id": "c-breaker",
+      "source_id": "c-breaker",
+      "question": "What are Acme's circuit breaker settings?",
+      "answer": "The carrier-tracking client opens after 50 percent of calls fail within a 30 second window [S1]. It stays open for 20 seconds, then moves to half-open with 5 trial calls [S1].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "circuit-breaker.md"
+          },
+          "heading_path": [
+            "Circuit Breaker"
+          ],
+          "display_sha256": "c6aab902f09070e259525710278da83e62e2a3b2e3c7ecc59cb2dea8df2c6bca",
+          "occurrence": 0
+        }
+      ],
+      "mutation": null,
+      "span": null,
+      "validity_check": null,
+      "owner_reviewed": false
+    },
+    {
+      "id": "c-lag",
+      "source_id": "c-lag",
+      "question": "What caused the tracking lag incident?",
+      "answer": "A new enrichment step called an external geocoding API inside the poll loop [S1]. Slow calls pushed the time between polls past `max.poll.interval.ms`, so the group kept rebalancing [S1].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "incident-kafka-lag.md"
+          },
+          "heading_path": [
+            "Incident: Shipment Tracking Lag (2025)"
+          ],
+          "display_sha256": "fa8eaa57f8ae6d8e5fbd82e4716d2b99a6cff5e8ec62464c612d7c8b9546c9c4",
+          "occurrence": 0
+        }
+      ],
+      "mutation": null,
+      "span": null,
+      "validity_check": null,
+      "owner_reviewed": false
+    },
+    {
+      "id": "c-idempotency",
+      "source_id": "c-idempotency",
+      "question": "How do idempotency keys prevent double charges?",
+      "answer": "The server stores the key with the response for 24 hours [S1]. A retry with the same key returns the stored response instead of charging again [S1].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "idempotency-keys.md"
+          },
+          "heading_path": [
+            "Idempotency Keys"
+          ],
+          "display_sha256": "dd7f51f9f60d7282609149622b3f7065fc3a3bfe9780f0c6915050a3a25d82d6",
+          "occurrence": 0
+        },
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "idempotency-keys.md"
+          },
+          "heading_path": [
+            "Idempotency Keys",
+            "Code"
+          ],
+          "display_sha256": "e466c50ba71a6a8bb925624a7b6d648f1555ca6640740e0e80ee10a4eefcbcda",
+          "occurrence": 0
+        }
+      ],
+      "mutation": null,
+      "span": null,
+      "validity_check": null,
+      "owner_reviewed": false
+    },
+    {
+      "id": "c-deploy",
+      "source_id": "c-deploy",
+      "question": "How does Acme guard the topic delete command?",
+      "answer": "The runbook guards it with a check on the environment:\n\n```bash\nif [ \"$ENV\" != \"dev\" ]; then exit 1; fi\nkafka-topics --delete --topic tracking-events\n```\n\n[S1]",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "deploy-runbook.md"
+          },
+          "heading_path": [
+            "Deploy Runbook",
+            "Dangerous commands"
+          ],
+          "display_sha256": "7b1436b038c0249d17362c84dfb90a2f5f383193e7b40cf17cb5de784397b543",
+          "occurrence": 0
+        }
+      ],
+      "mutation": null,
+      "span": null,
+      "validity_check": null,
+      "owner_reviewed": false
+    },
+    {
+      "id": "p-typo-1",
+      "source_id": "c-ordering",
+      "question": "How do you keep Kafka producer ordering with retries?",
+      "answer": "Retries can reorder records when more than one request is in flight [S1]. Setting `max.in.flight.request.per.connection` to 1 gives strict ordering at a throughput cost [S1].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "kafka-producer-config.md"
+          },
+          "heading_path": [
+            "Kafka Producer Configuration"
+          ],
+          "display_sha256": "a76c1db620d73976ac9d24b5302098d85e540a8f9d541a8097ec9b9fe7d9f8b1",
+          "occurrence": 0
+        }
+      ],
+      "mutation": "identifier_typo",
+      "span": {
+        "start": 83,
+        "end": 119
+      },
+      "validity_check": "token_absent_from_shown",
+      "owner_reviewed": true
+    },
+    {
+      "id": "p-typo-2",
+      "source_id": "c-lag",
+      "question": "What caused the tracking lag incident?",
+      "answer": "A new enrichment step called an external geocoding API inside the poll loop [S1]. Slow calls pushed the time between polls past `max.poll.interval.sec`, so the group kept rebalancing [S1].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "incident-kafka-lag.md"
+          },
+          "heading_path": [
+            "Incident: Shipment Tracking Lag (2025)"
+          ],
+          "display_sha256": "fa8eaa57f8ae6d8e5fbd82e4716d2b99a6cff5e8ec62464c612d7c8b9546c9c4",
+          "occurrence": 0
+        }
+      ],
+      "mutation": "identifier_typo",
+      "span": {
+        "start": 129,
+        "end": 150
+      },
+      "validity_check": "token_absent_from_shown",
+      "owner_reviewed": true
+    },
+    {
+      "id": "p-number-1",
+      "source_id": "c-aof",
+      "question": "How much data can Redis AOF lose?",
+      "answer": "With `appendfsync everysec`, at most about ten seconds of writes is lost on a crash [S1].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "redis-persistence.md"
+          },
+          "heading_path": [
+            "Redis Persistence"
+          ],
+          "display_sha256": "6e80b39be8cdec31a15599db590cf5259a8ab9cf7225d7a3aaa113d1a0d471eb",
+          "occurrence": 0
+        }
+      ],
+      "mutation": "number_drift",
+      "span": {
+        "start": 43,
+        "end": 54
+      },
+      "validity_check": "number_absent_from_shown",
+      "owner_reviewed": true
+    },
+    {
+      "id": "p-number-2",
+      "source_id": "c-breaker",
+      "question": "What are Acme's circuit breaker settings?",
+      "answer": "The carrier-tracking client opens after 80 percent of calls fail within a 30 second window [S1]. It stays open for 20 seconds, then moves to half-open with 5 trial calls [S1].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "circuit-breaker.md"
+          },
+          "heading_path": [
+            "Circuit Breaker"
+          ],
+          "display_sha256": "c6aab902f09070e259525710278da83e62e2a3b2e3c7ecc59cb2dea8df2c6bca",
+          "occurrence": 0
+        }
+      ],
+      "mutation": "number_drift",
+      "span": {
+        "start": 40,
+        "end": 42
+      },
+      "validity_check": "number_absent_from_shown",
+      "owner_reviewed": true
+    },
+    {
+      "id": "p-entity-1",
+      "source_id": "c-durability",
+      "question": "Which settings stop Acme losing acknowledged Kafka events?",
+      "answer": "Acme producers set `acks=all`, so a write is acknowledged only after every Redis replica has it [S1]. With `min.insync.replicas=2` on the topic, a single broker loss never loses an acknowledged event [S1].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "kafka-producer-config.md"
+          },
+          "heading_path": [
+            "Kafka Producer Configuration"
+          ],
+          "display_sha256": "a76c1db620d73976ac9d24b5302098d85e540a8f9d541a8097ec9b9fe7d9f8b1",
+          "occurrence": 0
+        }
+      ],
+      "mutation": "entity_swap",
+      "span": {
+        "start": 75,
+        "end": 80
+      },
+      "validity_check": "entity_absent_from_cited",
+      "owner_reviewed": true
+    },
+    {
+      "id": "p-entity-2",
+      "source_id": "c-lag",
+      "question": "What caused the tracking lag incident?",
+      "answer": "A new enrichment step called an external payments API inside the poll loop [S1]. Slow calls pushed the time between polls past `max.poll.interval.ms`, so the group kept rebalancing [S1].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "incident-kafka-lag.md"
+          },
+          "heading_path": [
+            "Incident: Shipment Tracking Lag (2025)"
+          ],
+          "display_sha256": "fa8eaa57f8ae6d8e5fbd82e4716d2b99a6cff5e8ec62464c612d7c8b9546c9c4",
+          "occurrence": 0
+        }
+      ],
+      "mutation": "entity_swap",
+      "span": {
+        "start": 41,
+        "end": 49
+      },
+      "validity_check": "entity_absent_from_cited",
+      "owner_reviewed": true
+    },
+    {
+      "id": "p-negation-1",
+      "source_id": "c-stampede",
+      "question": "How does Acme avoid Redis stampedes?",
+      "answer": "Every key gets a TTL of 10 minutes plus random jitter of up to 60 seconds, so many keys always expire at the same moment [S1]. Acme guards hot keys with a short lock so only one request reloads it [S1].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "redis-caching.md"
+          },
+          "heading_path": [
+            "Redis Caching"
+          ],
+          "display_sha256": "85ccc9ebd017d2ff747fac62f4a30d3025a72b38fa9bc6b6e83d199170e7fb7a",
+          "occurrence": 0
+        }
+      ],
+      "mutation": "negation_flip",
+      "span": {
+        "start": 88,
+        "end": 94
+      },
+      "validity_check": "owner_review",
+      "owner_reviewed": false
+    },
+    {
+      "id": "p-fabricated-1",
+      "source_id": "c-aof",
+      "question": "How much data can Redis AOF lose?",
+      "answer": "With `appendfsync everysec`, at most about one second of writes is lost on a crash [S1]. Acme replicates AOF files to three regions.",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "redis-persistence.md"
+          },
+          "heading_path": [
+            "Redis Persistence"
+          ],
+          "display_sha256": "6e80b39be8cdec31a15599db590cf5259a8ab9cf7225d7a3aaa113d1a0d471eb",
+          "occurrence": 0
+        }
+      ],
+      "mutation": "fabricated_sentence",
+      "span": {
+        "start": 89,
+        "end": 132
+      },
+      "validity_check": "no_label_no_attribution",
+      "owner_reviewed": true
+    },
+    {
+      "id": "p-fabricated-2",
+      "source_id": "c-idempotency",
+      "question": "How do idempotency keys prevent double charges?",
+      "answer": "The server stores the key with the response for 24 hours [S1]. A retry with the same key returns the stored response instead of charging again [S1]. The keys are signed with HMAC-SHA512.",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "idempotency-keys.md"
+          },
+          "heading_path": [
+            "Idempotency Keys"
+          ],
+          "display_sha256": "dd7f51f9f60d7282609149622b3f7065fc3a3bfe9780f0c6915050a3a25d82d6",
+          "occurrence": 0
+        },
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "idempotency-keys.md"
+          },
+          "heading_path": [
+            "Idempotency Keys",
+            "Code"
+          ],
+          "display_sha256": "e466c50ba71a6a8bb925624a7b6d648f1555ca6640740e0e80ee10a4eefcbcda",
+          "occurrence": 0
+        }
+      ],
+      "mutation": "fabricated_sentence",
+      "span": {
+        "start": 149,
+        "end": 186
+      },
+      "validity_check": "no_label_no_attribution",
+      "owner_reviewed": true
+    },
+    {
+      "id": "p-moved-1",
+      "source_id": "c-idempotency",
+      "question": "How do idempotency keys prevent double charges?",
+      "answer": "The server stores the key with the response for 24 hours [S1]. A retry with the same key returns the stored response instead of charging again [S2].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "idempotency-keys.md"
+          },
+          "heading_path": [
+            "Idempotency Keys"
+          ],
+          "display_sha256": "dd7f51f9f60d7282609149622b3f7065fc3a3bfe9780f0c6915050a3a25d82d6",
+          "occurrence": 0
+        },
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "idempotency-keys.md"
+          },
+          "heading_path": [
+            "Idempotency Keys",
+            "Code"
+          ],
+          "display_sha256": "e466c50ba71a6a8bb925624a7b6d648f1555ca6640740e0e80ee10a4eefcbcda",
+          "occurrence": 0
+        }
+      ],
+      "mutation": "citation_moved",
+      "span": {
+        "start": 144,
+        "end": 146
+      },
+      "validity_check": "new_page_lacks_content",
+      "owner_reviewed": true
+    },
+    {
+      "id": "p-guard-1",
+      "source_id": "c-deploy",
+      "question": "How does Acme guard the topic delete command?",
+      "answer": "The runbook guards it with a check on the environment:\n\n```bash\nkafka-topics --delete --topic tracking-events\n```\n\n[S1]",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "deploy-runbook.md"
+          },
+          "heading_path": [
+            "Deploy Runbook",
+            "Dangerous commands"
+          ],
+          "display_sha256": "7b1436b038c0249d17362c84dfb90a2f5f383193e7b40cf17cb5de784397b543",
+          "occurrence": 0
+        }
+      ],
+      "mutation": "guard_dropped",
+      "span": {
+        "start": 64,
+        "end": 109
+      },
+      "validity_check": "line_in_source_block",
+      "owner_reviewed": true
+    },
+    {
+      "id": "p-typo-3",
+      "source_id": "c-durability",
+      "question": "Which settings stop Acme losing acknowledged Kafka events?",
+      "answer": "Acme producers set `acks=all`, so a write is acknowledged only after every in-sync replica has it [S1]. With `min.insync.replica=2` on the topic, a single broker loss never loses an acknowledged event [S1].",
+      "shown": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "kafka-producer-config.md"
+          },
+          "heading_path": [
+            "Kafka Producer Configuration"
+          ],
+          "display_sha256": "a76c1db620d73976ac9d24b5302098d85e540a8f9d541a8097ec9b9fe7d9f8b1",
+          "occurrence": 0
+        }
+      ],
+      "mutation": "identifier_typo",
+      "span": {
+        "start": 110,
+        "end": 128
+      },
+      "validity_check": "token_absent_from_shown",
+      "owner_reviewed": true
+    }
+  ]
+}

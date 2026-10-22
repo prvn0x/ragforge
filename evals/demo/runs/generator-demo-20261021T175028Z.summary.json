@@ -1,0 +1,81 @@
+{
+  "schema_version": 2,
+  "run_id": "generator-demo-20261021T175028Z",
+  "eval_kind": "generator",
+  "header_digest": "7875363e02779a22b289ab61b387097c668eac262dc355d1df4b5bd546efd114",
+  "metrics": [
+    {
+      "name": "generator.abstain_correct",
+      "value": 1.0,
+      "ci_low": 0.8388748419471808,
+      "ci_high": 1.0,
+      "n": 20,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "generator.answer_rate",
+      "value": 0.65,
+      "ci_low": 0.43285427668523635,
+      "ci_high": 0.8188081758989179,
+      "n": 20,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "generator.correct",
+      "value": 0.95,
+      "ci_low": 0.763868806553258,
+      "ci_high": 0.9911185511992047,
+      "n": 20,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "generator.judge.completeness",
+      "value": null,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 0,
+      "method": "point",
+      "trusted": false,
+      "note": "no judge key in the run header"
+    },
+    {
+      "name": "generator.judge.faithfulness",
+      "value": null,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 0,
+      "method": "point",
+      "trusted": false,
+      "note": "no judge key in the run header"
+    },
+    {
+      "name": "generator.judge.relevance",
+      "value": null,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 0,
+      "method": "point",
+      "trusted": false,
+      "note": "no judge key in the run header"
+    },
+    {
+      "name": "generator.verified",
+      "value": 0.9,
+      "ci_low": 0.6989663547715129,
+      "ci_high": 0.9721335187862318,
+      "n": 20,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    }
+  ],
+  "stale_items": 0,
+  "errors_ours": 0,
+  "errors_transient": 0
+}

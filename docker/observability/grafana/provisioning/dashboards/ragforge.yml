@@ -1,0 +1,16 @@
+# Dashboards from files (ADR-0018 R2-7). The JSON in /etc/grafana/dashboards is the source of
+# truth: UI edits are refused (allowUiUpdates: false) so the board never drifts from the repo;
+# change ragforge.json and restart Grafana (or wait for the rescan) instead.
+apiVersion: 1
+
+providers:
+  - name: ragforge
+    orgId: 1
+    folder: RAGForge
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 60
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false

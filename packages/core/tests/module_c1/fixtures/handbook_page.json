@@ -1,0 +1,31 @@
+{
+  "object": "page",
+  "id": "59833787-2cf9-4fdf-8782-e53db20768a5",
+  "created_time": "2026-09-01T08:00:00.000Z",
+  "last_edited_time": "2026-10-16T11:58:00.000Z",
+  "created_by": {"object": "user", "id": "e3b1a0c2-71f4-4b8e-9a54-1f0cdb7a9e01"},
+  "last_edited_by": {"object": "user", "id": "e3b1a0c2-71f4-4b8e-9a54-1f0cdb7a9e01"},
+  "cover": null,
+  "icon": {"type": "emoji", "emoji": "📘"},
+  "parent": {"type": "workspace", "workspace": true},
+  "archived": false,
+  "in_trash": false,
+  "properties": {
+    "title": {
+      "id": "title",
+      "type": "title",
+      "title": [
+        {
+          "type": "text",
+          "text": {"content": "Engineering Handbook", "link": null},
+          "annotations": {"bold": false, "italic": false, "strikethrough": false, "underline": false, "code": false, "color": "default"},
+          "plain_text": "Engineering Handbook",
+          "href": null
+        }
+      ]
+    }
+  },
+  "url": "https://www.notion.so/Engineering-Handbook-598337872cf94fdf8782e53db20768a5",
+  "public_url": null,
+  "request_id": "6b0a3f0e-8d3e-4c1a-9f0e-6c0f5c8b9a11"
+}

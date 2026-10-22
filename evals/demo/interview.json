@@ -1,0 +1,158 @@
+{
+  "schema_version": 2,
+  "name": "demo",
+  "seeds": [
+    {
+      "id": "s-rebalance",
+      "topic": "Kafka consumer rebalance",
+      "kind": "concept",
+      "seed_level": "senior_sde_1",
+      "question": "Why is the cooperative sticky assignor better than eager rebalancing, and how does static membership help during deploys?",
+      "expected_points": [
+        "Eager revokes every partition from every consumer and pauses the group",
+        "Cooperative sticky moves only the partitions that change owner",
+        "group.instance.id gives a stable identity so a quick restart does not rebalance"
+      ],
+      "chunk_keys": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "kafka-consumer-rebalance.md"
+          },
+          "heading_path": [
+            "Kafka Consumer Rebalance"
+          ],
+          "display_sha256": "45d6c21941f9a596ed78711b82e93b6b6cd01d76b11f0dcdc0efe14dc68cce1e",
+          "occurrence": 0
+        },
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "kafka-consumer-rebalance.md"
+          },
+          "heading_path": [
+            "Kafka Consumer Rebalance",
+            "Static membership"
+          ],
+          "display_sha256": "63c8218882c31624b403ab14d6126d90524214d043343ca1b9e489d2e3d7d6ec",
+          "occurrence": 0
+        }
+      ],
+      "answers": {
+        "gold": "Eager rebalancing revokes every partition from every consumer, so the whole group pauses. The cooperative sticky assignor only moves the partitions that change owner, so most consumers keep working. Static membership with group.instance.id gives each consumer a stable identity, so a quick restart in a deploy doesn't rebalance.",
+        "partial": "Cooperative only moves the partitions that change owner, eager stops everyone.",
+        "wrong": "Cooperative rebalancing is faster because it compresses the partitions before sending them to the new consumer.",
+        "misconception": "Eager rebalancing revokes every partition from every consumer, so the whole group pauses. The cooperative sticky assignor only moves the partitions that change owner, so most consumers keep working. Static membership with group.instance.id gives each consumer a stable identity, so a quick restart in a deploy doesn't rebalance. Static membership makes Kafka keep a consumer's partitions forever, even after it crashes for good."
+      },
+      "misconception_sentence": "Static membership makes Kafka keep a consumer's partitions forever, even after it crashes for good."
+    },
+    {
+      "id": "s-outbox",
+      "topic": "outbox pattern",
+      "kind": "design",
+      "seed_level": "senior_sde_2",
+      "question": "A service writes to Postgres and publishes to Kafka. What goes wrong, how does the outbox pattern fix it, and what must consumers do?",
+      "expected_points": [
+        "A crash between the two writes leaves the database and the stream disagreeing",
+        "The business row and an outbox row are written in one transaction; a relay publishes",
+        "Delivery is at least once, so consumers must be idempotent"
+      ],
+      "chunk_keys": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "outbox-pattern.md"
+          },
+          "heading_path": [
+            "Outbox Pattern"
+          ],
+          "display_sha256": "ee3a8f7aa366f71e6a4dfdcc8337de1798216f0b739417e599940e30cdfe0b64",
+          "occurrence": 0
+        }
+      ],
+      "answers": {
+        "gold": "It's a dual write: if the service crashes between the Postgres write and the Kafka publish, the two disagree. The outbox writes the business row and an outbox row in one transaction, and a relay publishes outbox rows to Kafka. The relay can publish twice after a crash, so it's at least once and consumers must dedupe on the event id.",
+        "partial": "Write an outbox row in the same transaction and have a relay publish it.",
+        "wrong": "Use a distributed lock around both writes so they happen together.",
+        "misconception": "It's a dual write: if the service crashes between the Postgres write and the Kafka publish, the two disagree. The outbox writes the business row and an outbox row in one transaction, and a relay publishes outbox rows to Kafka. The relay can publish twice after a crash, so it's at least once and consumers must dedupe on the event id. With the outbox pattern every event is delivered exactly once, so consumers never see duplicates."
+      },
+      "misconception_sentence": "With the outbox pattern every event is delivered exactly once, so consumers never see duplicates."
+    },
+    {
+      "id": "s-ratelimit",
+      "topic": "API rate limiting",
+      "kind": "concept",
+      "seed_level": "sde_2",
+      "question": "How does Acme rate limit its API and why per key?",
+      "expected_points": [
+        "A token bucket of 100 tokens refilling at 10 per second; empty returns 429",
+        "Per key because many customers share one NAT address",
+        "Buckets in Redis, updated atomically by a Lua script"
+      ],
+      "chunk_keys": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "api-rate-limiting.md"
+          },
+          "heading_path": [
+            "API Rate Limiting"
+          ],
+          "display_sha256": "286d53db141df64d5805509e32924ee81819bc3479a160651262e680e61572d8",
+          "occurrence": 0
+        },
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "api-rate-limiting.md"
+          },
+          "heading_path": [
+            "API Rate Limiting",
+            "Storage"
+          ],
+          "display_sha256": "8690c88e18a2fb2d439d9abb53915aedeaeaefc5cbc16eb3886f3063159ad991",
+          "occurrence": 0
+        }
+      ],
+      "answers": {
+        "gold": "Each API key has a token bucket of 100 tokens refilling at 10 per second; an empty bucket returns 429 with Retry-After. It's per key, not per IP, because many customers share one corporate NAT. The buckets live in Redis and a Lua script does the read and decrement atomically so every replica agrees.",
+        "partial": "Token bucket per API key, and a 429 when it's empty.",
+        "wrong": "Acme limits each IP address to one request per second using nginx.",
+        "misconception": "Each API key has a token bucket of 100 tokens refilling at 10 per second; an empty bucket returns 429 with Retry-After. It's per key, not per IP, because many customers share one corporate NAT. The buckets live in Redis and a Lua script does the read and decrement atomically so every replica agrees. The buckets are kept in each API replica's memory, so no shared store is needed."
+      },
+      "misconception_sentence": "The buckets are kept in each API replica's memory, so no shared store is needed."
+    },
+    {
+      "id": "s-idempotency",
+      "topic": "idempotency keys",
+      "kind": "code",
+      "seed_level": "sde_1",
+      "question": "Write the server-side logic that stops a retried payment from being charged twice.",
+      "expected_points": [
+        "Look the Idempotency-Key up first and return the saved response if present",
+        "Otherwise charge, then store the result under the key for 24 hours"
+      ],
+      "chunk_keys": [
+        {
+          "page": {
+            "source_kind": "file",
+            "key": "idempotency-keys.md"
+          },
+          "heading_path": [
+            "Idempotency Keys",
+            "Code"
+          ],
+          "display_sha256": "e466c50ba71a6a8bb925624a7b6d648f1555ca6640740e0e80ee10a4eefcbcda",
+          "occurrence": 0
+        }
+      ],
+      "answers": {
+        "gold": "Check the store for the idempotency key first; if there's a saved response, return it. Otherwise call payments.charge, store the result under the key with a 24 hour TTL, and return it.",
+        "partial": "Store the key so a retry is ignored.",
+        "wrong": "Retry the payment until it succeeds and refund any duplicates later.",
+        "misconception": "Check the store for the idempotency key first; if there's a saved response, return it. Otherwise call payments.charge, store the result under the key with a 24 hour TTL, and return it. The key must be stored before charging, with no response, so a retry is simply rejected with an error."
+      },
+      "misconception_sentence": "The key must be stored before charging, with no response, so a retry is simply rejected with an error."
+    }
+  ]
+}

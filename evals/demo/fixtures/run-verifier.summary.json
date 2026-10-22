@@ -1,0 +1,181 @@
+{
+  "schema_version": 2,
+  "run_id": "golden-verifier",
+  "eval_kind": "verifier",
+  "header_digest": "367591ef19251c9e0f2cea62aa4e209656a1dec8f77f2e2819bc5fc1f5f0d0c4",
+  "metrics": [
+    {
+      "name": "verifier.badge_flip_recall",
+      "value": 0.9,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.caught_by.both",
+      "value": 0.08333333333333333,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.caught_by.coverage",
+      "value": 0.25,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.caught_by.missed",
+      "value": 0.25,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.caught_by.verifier",
+      "value": 0.4166666666666667,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.caught_unlocated",
+      "value": 0.1,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.false_reject",
+      "value": 0.25,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.false_reject.coverage_caused",
+      "value": 0.125,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.false_reject.verifier_caused",
+      "value": 0.125,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.span_recall",
+      "value": 0.75,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.span_recall.citation_moved",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.span_recall.entity_swap",
+      "value": 0.5,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.span_recall.fabricated_sentence",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.span_recall.guard_dropped",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.span_recall.identifier_typo",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.span_recall.negation_flip",
+      "value": 0.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "verifier.span_recall.number_drift",
+      "value": 0.5,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    }
+  ],
+  "stale_items": 0,
+  "errors_ours": 0,
+  "errors_transient": 0
+}

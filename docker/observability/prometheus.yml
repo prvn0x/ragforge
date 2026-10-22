@@ -1,0 +1,38 @@
+# Prometheus for the opt-in `obs` compose profile (ADR-0018 revision 2, R2-4/R2-6/R2-7).
+#
+# Mounted read-only at /etc/prometheus/prometheus.yml, with ./rules at /etc/prometheus/rules, so
+# the relative rule_files glob below resolves next to this file in the container AND in the
+# `promtool check config` test. The admin and lifecycle APIs stay off: they are command-line
+# flags (--web.enable-admin-api / --web.enable-lifecycle) and the compose snippet sets neither.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  # The API's scrape-time DB collector does TWO sequential reads (queue_stats, then
+  # connector_freshness), each bounded by a 5 s connect / pool-checkout / statement timeout. A DB
+  # that hangs instead of refusing can therefore hold one /metrics answer for ~10 s plus the
+  # in-process part. 14 s covers both reads and stays under the 15 s interval (Prometheus
+  # requires timeout <= interval), so a hung DB shows as missing DB gauges
+  # (RagforgeDbGaugesMissing, with the right advice) and not as a failed scrape (TargetDown,
+  # with the wrong advice, plus gaps on every API panel).
+  scrape_timeout: 14s
+
+rule_files:
+  - rules/*.yml  # not recursive: rules/tests/ holds the promtool unit tests, never loaded
+
+scrape_configs:
+  # The API is ONE uvicorn process (R2-6), so one static target. Port 9101 =
+  # catalog.API_METRICS_PORT; it is on the compose network only, never published.
+  - job_name: ragforge-api
+    static_configs:
+      - targets: ["api:9101"]
+
+  # The worker can be scaled (`docker compose up --scale worker=N`). Docker's embedded DNS
+  # returns one A record per replica for the service name, so DNS service discovery scrapes
+  # every replica separately instead of whichever one a static target happens to hit.
+  # Port 9102 = catalog.WORKER_METRICS_PORT.
+  - job_name: ragforge-worker
+    dns_sd_configs:
+      - names: ["worker"]
+        type: A
+        port: 9102
+        refresh_interval: 30s

@@ -1,0 +1,221 @@
+{
+  "schema_version": 2,
+  "run_id": "verifier-demo-20261021T174717Z",
+  "eval_kind": "verifier",
+  "header_digest": "9da010a4b144a6fa3870e81d40152c6470394c2cd2c6c046e54119dab15e9508",
+  "metrics": [
+    {
+      "name": "verifier.badge_flip_recall",
+      "value": 0.9090909090909091,
+      "ci_low": 0.5872200830116188,
+      "ci_high": 1.0,
+      "n": 11,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "on 7 clean-verified sources; a bound widened to the exact Clopper-Pearson bound"
+    },
+    {
+      "name": "verifier.caught_by.both",
+      "value": 0.3333333333333333,
+      "ci_low": 0.0992460911495825,
+      "ci_high": 0.6511244935811855,
+      "n": 12,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "a bound widened to the exact Clopper-Pearson bound"
+    },
+    {
+      "name": "verifier.caught_by.coverage",
+      "value": 0.16666666666666666,
+      "ci_low": 0.0,
+      "ci_high": 0.4841377486859675,
+      "n": 12,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "a bound widened to the exact Clopper-Pearson bound"
+    },
+    {
+      "name": "verifier.caught_by.missed",
+      "value": 0.08333333333333333,
+      "ci_low": 0.0,
+      "ci_high": 0.3847961651509437,
+      "n": 12,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "a bound widened to the exact Clopper-Pearson bound"
+    },
+    {
+      "name": "verifier.caught_by.verifier",
+      "value": 0.4166666666666667,
+      "ci_low": 0.15165222980842996,
+      "ci_high": 0.7233303143178937,
+      "n": 12,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "a bound widened to the exact Clopper-Pearson bound"
+    },
+    {
+      "name": "verifier.caught_unlocated",
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.2849141529181547,
+      "n": 11,
+      "method": "clopper_pearson",
+      "trusted": null,
+      "note": "on 7 clean-verified sources; exact CP: bootstrap degenerate"
+    },
+    {
+      "name": "verifier.false_reject",
+      "value": 0.125,
+      "ci_low": 0.0,
+      "ci_high": 0.5265096708752064,
+      "n": 8,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "a bound widened to the exact Clopper-Pearson bound"
+    },
+    {
+      "name": "verifier.false_reject.coverage_caused",
+      "value": 0.125,
+      "ci_low": 0.0,
+      "ci_high": 0.5265096708752064,
+      "n": 8,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "a bound widened to the exact Clopper-Pearson bound"
+    },
+    {
+      "name": "verifier.false_reject.verifier_caused",
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.3694166475528191,
+      "n": 8,
+      "method": "clopper_pearson",
+      "trusted": null,
+      "note": "exact CP: bootstrap degenerate"
+    },
+    {
+      "name": "verifier.false_verified@0.05",
+      "value": 0.005438477226376617,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 8,
+      "method": "point",
+      "trusted": null,
+      "note": "P(wrong | verified) at base rate 5%; conservative plug-in bounds [0.000, 0.044] from the recall and false-reject CI bounds (not a joint CI)"
+    },
+    {
+      "name": "verifier.false_verified@0.10",
+      "value": 0.011412268188302429,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 8,
+      "method": "point",
+      "trusted": null,
+      "note": "P(wrong | verified) at base rate 10%; conservative plug-in bounds [0.000, 0.088] from the recall and false-reject CI bounds (not a joint CI)"
+    },
+    {
+      "name": "verifier.false_verified@0.20",
+      "value": 0.025316455696202538,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 8,
+      "method": "point",
+      "trusted": null,
+      "note": "P(wrong | verified) at base rate 20%; conservative plug-in bounds [0.000, 0.179] from the recall and false-reject CI bounds (not a joint CI)"
+    },
+    {
+      "name": "verifier.false_verified@0.30",
+      "value": 0.04262877442273537,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 8,
+      "method": "point",
+      "trusted": null,
+      "note": "P(wrong | verified) at base rate 30%; conservative plug-in bounds [0.000, 0.272] from the recall and false-reject CI bounds (not a joint CI)"
+    },
+    {
+      "name": "verifier.span_recall",
+      "value": 0.9166666666666666,
+      "ci_low": 0.6152038348490527,
+      "ci_high": 1.0,
+      "n": 12,
+      "method": "cluster_bootstrap",
+      "trusted": null,
+      "note": "a bound widened to the exact Clopper-Pearson bound"
+    },
+    {
+      "name": "verifier.span_recall.citation_moved",
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.9750000000000001,
+      "n": 1,
+      "method": "clopper_pearson",
+      "trusted": null,
+      "note": "exact CP: bootstrap degenerate"
+    },
+    {
+      "name": "verifier.span_recall.entity_swap",
+      "value": 1.0,
+      "ci_low": 0.1581138830084181,
+      "ci_high": 1.0,
+      "n": 2,
+      "method": "clopper_pearson",
+      "trusted": null,
+      "note": "exact CP: bootstrap degenerate"
+    },
+    {
+      "name": "verifier.span_recall.fabricated_sentence",
+      "value": 1.0,
+      "ci_low": 0.1581138830084181,
+      "ci_high": 1.0,
+      "n": 2,
+      "method": "clopper_pearson",
+      "trusted": null,
+      "note": "exact CP: bootstrap degenerate"
+    },
+    {
+      "name": "verifier.span_recall.guard_dropped",
+      "value": 1.0,
+      "ci_low": 0.02499999999999991,
+      "ci_high": 1.0,
+      "n": 1,
+      "method": "clopper_pearson",
+      "trusted": null,
+      "note": "exact CP: bootstrap degenerate"
+    },
+    {
+      "name": "verifier.span_recall.identifier_typo",
+      "value": 1.0,
+      "ci_low": 0.2924017738212865,
+      "ci_high": 1.0,
+      "n": 3,
+      "method": "clopper_pearson",
+      "trusted": null,
+      "note": "exact CP: bootstrap degenerate"
+    },
+    {
+      "name": "verifier.span_recall.negation_flip",
+      "value": 1.0,
+      "ci_low": 0.02499999999999991,
+      "ci_high": 1.0,
+      "n": 1,
+      "method": "clopper_pearson",
+      "trusted": null,
+      "note": "exact CP: bootstrap degenerate"
+    },
+    {
+      "name": "verifier.span_recall.number_drift",
+      "value": 1.0,
+      "ci_low": 0.1581138830084181,
+      "ci_high": 1.0,
+      "n": 2,
+      "method": "clopper_pearson",
+      "trusted": null,
+      "note": "exact CP: bootstrap degenerate"
+    }
+  ],
+  "stale_items": 0,
+  "errors_ours": 0,
+  "errors_transient": 0
+}

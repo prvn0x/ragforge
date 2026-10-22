@@ -1,0 +1,271 @@
+{
+  "schema_version": 2,
+  "run_id": "golden-retrieval",
+  "eval_kind": "retrieval",
+  "header_digest": "fcc3d2c5c608841babbdfe7365f6c83ac2d4b7dd0881413989f5aea394a04f80",
+  "metrics": [
+    {
+      "name": "retrieval.fused.hit@10",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.fused.hit@5",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.fused.mrr",
+      "value": 0.611111111111111,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.fused.ndcg@10",
+      "value": 0.7292492704722198,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.fused.recall@10",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.fused.recall@20",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.fused.recall@5",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.keyword.hit@10",
+      "value": 0.8333333333333334,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.keyword.hit@5",
+      "value": 0.75,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.keyword.mrr",
+      "value": 0.30496031746031743,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.keyword.ndcg@10",
+      "value": 0.41049820153440514,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.keyword.recall@10",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.keyword.recall@5",
+      "value": 0.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.reranked.hit@10",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.reranked.hit@5",
+      "value": 0.75,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.reranked.mrr",
+      "value": 0.7916666666666666,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.reranked.ndcg@10",
+      "value": 0.8049021387732778,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.reranked.recall@10",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.reranked.recall@5",
+      "value": 0.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.unanswerable.below_tau",
+      "value": 0.5714285714285714,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.vector.hit@10",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.vector.hit@5",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.vector.mrr",
+      "value": 0.32083333333333336,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.vector.ndcg@10",
+      "value": 0.502140621056421,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.vector.recall@10",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "retrieval.vector.recall@5",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    }
+  ],
+  "stale_items": 0,
+  "errors_ours": 0,
+  "errors_transient": 0
+}

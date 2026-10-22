@@ -1,0 +1,161 @@
+{
+  "schema_version": 2,
+  "run_id": "interview-demo-20261021T175559Z",
+  "eval_kind": "interview",
+  "header_digest": "44126f54dd9f33ad127ecd601ca219c5df70a509b23c6b9542d0451d5e09c365",
+  "metrics": [
+    {
+      "name": "interview.band.gold_ge_7",
+      "value": 1.0,
+      "ci_low": 0.5101091635454028,
+      "ci_high": 1.0,
+      "n": 4,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "interview.band.wrong_le_3",
+      "value": 1.0,
+      "ci_low": 0.5101091635454028,
+      "ci_high": 1.0,
+      "n": 4,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "interview.detection_given",
+      "value": 0.75,
+      "ci_low": 0.3006418425824019,
+      "ci_high": 0.9544127391902993,
+      "n": 4,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "interview.detection_kept",
+      "value": 0.75,
+      "ci_low": 0.3006418425824019,
+      "ci_high": 0.9544127391902993,
+      "n": 4,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "interview.level.page_l",
+      "value": 370.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 8,
+      "method": "exact",
+      "trusted": null,
+      "note": "exact permutation p=0.06 (one-sided, staff -> sde_1 increasing)"
+    },
+    {
+      "name": "interview.level.page_l.p_value",
+      "value": 0.06,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 8,
+      "method": "exact",
+      "trusted": null,
+      "note": "P(L* >= L) under within-block exchangeability"
+    },
+    {
+      "name": "interview.level.retest_sd",
+      "value": 0.33541019662496846,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 40,
+      "method": "point",
+      "trusted": null,
+      "note": "cells graded twice"
+    },
+    {
+      "name": "interview.level.sde1_vs_staff.sign_p",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 8,
+      "method": "exact",
+      "trusted": null,
+      "note": "pooled paired sign test: +1 -0 =7"
+    },
+    {
+      "name": "interview.question.code_ref",
+      "value": 1.0,
+      "ci_low": 0.3423802275066532,
+      "ci_high": 1.0,
+      "n": 2,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "interview.question.judge.at_level",
+      "value": null,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 0,
+      "method": "point",
+      "trusted": false,
+      "note": "no judge key in the run header"
+    },
+    {
+      "name": "interview.question.judge.grounded",
+      "value": null,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 0,
+      "method": "point",
+      "trusted": false,
+      "note": "no judge key in the run header"
+    },
+    {
+      "name": "interview.question.judge.on_topic",
+      "value": null,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 0,
+      "method": "point",
+      "trusted": false,
+      "note": "no judge key in the run header"
+    },
+    {
+      "name": "interview.question.leak",
+      "value": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.3244075648838801,
+      "n": 8,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "interview.question.seed_chunk_included",
+      "value": 1.0,
+      "ci_low": 0.67559243511612,
+      "ci_high": 1.0,
+      "n": 8,
+      "method": "wilson",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "interview.ranking_accuracy",
+      "value": 1.0,
+      "ci_low": 0.7940927857921776,
+      "ci_high": 1.0,
+      "n": 16,
+      "method": "clopper_pearson",
+      "trusted": null,
+      "note": "tier pairs at the seed level; a tie counts as wrong"
+    }
+  ],
+  "stale_items": 0,
+  "errors_ours": 0,
+  "errors_transient": 0
+}

@@ -1,0 +1,111 @@
+{
+  "schema_version": 2,
+  "run_id": "golden-generator",
+  "eval_kind": "generator",
+  "header_digest": "2014bbb8db84e023c4977dfe191361ffc69674dbea3081a7b4d1121b923d817a",
+  "metrics": [
+    {
+      "name": "calibration.completeness.kappa_linear",
+      "value": 0.9032258064516128,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": true,
+      "note": ""
+    },
+    {
+      "name": "calibration.completeness.raw_agreement",
+      "value": 0.9166666666666666,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": true,
+      "note": ""
+    },
+    {
+      "name": "calibration.faithfulness.kappa_linear",
+      "value": 0.8124999999999999,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": true,
+      "note": ""
+    },
+    {
+      "name": "calibration.faithfulness.raw_agreement",
+      "value": 0.8333333333333334,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": true,
+      "note": ""
+    },
+    {
+      "name": "calibration.relevance.kappa_linear",
+      "value": 0.7096774193548387,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": true,
+      "note": ""
+    },
+    {
+      "name": "calibration.relevance.raw_agreement",
+      "value": 0.75,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": true,
+      "note": ""
+    },
+    {
+      "name": "generator.answer_rate",
+      "value": 0.6,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": null,
+      "note": ""
+    },
+    {
+      "name": "generator.judge.completeness",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": true,
+      "note": ""
+    },
+    {
+      "name": "generator.judge.faithfulness",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": true,
+      "note": ""
+    },
+    {
+      "name": "generator.judge.relevance",
+      "value": 1.0,
+      "ci_low": null,
+      "ci_high": null,
+      "n": 20,
+      "method": "point",
+      "trusted": true,
+      "note": ""
+    }
+  ],
+  "stale_items": 0,
+  "errors_ours": 0,
+  "errors_transient": 0
+}

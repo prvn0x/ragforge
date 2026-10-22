@@ -1,0 +1,20 @@
+# Grafana datasource (ADR-0018 R2-7). Provisioned, not clicked together, so `make nuke` +
+# `make obs-up` rebuilds the same board. The uid is what ragforge.json references.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: ragforge-prometheus
+    type: prometheus
+    access: proxy  # the browser talks only to Grafana; Prometheus has no host port
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: 15s  # = scrape_interval, so $__rate_interval spans at least 4 scrapes
+      prometheusType: Prometheus
+      prometheusVersion: 3.15.0
+      # Lists the Prometheus-evaluated rules in Grafana's alerting UI and the alert list panel.
+      # Read-only: Prometheus has no ruler write API, so nothing is editable from Grafana.
+      manageAlerts: true

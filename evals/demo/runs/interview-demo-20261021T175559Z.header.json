@@ -1,0 +1,13 @@
+{
+  "chat_model": null,
+  "dataset": {
+    "name": "demo",
+    "splits": [
+      "dev"
+    ]
+  },
+  "embed_model": null,
+  "rerank_model": null,
+  "started_at": "2026-10-21T17:55:59.536047Z",
+  "verifier_model": null
+}

@@ -1,0 +1,43 @@
+# The README's headline table (Phase 5): rendered by
+# `ragforge-eval2 results --write --doc README.md --manifest evals/readme-results.toml`
+# and checked by `--check` in packages/client/tests/test_w3_export.py. Same format as
+# evals/results.toml (see its header); the full tables are in docs/RESULTS.md.
+
+schema_version = 1
+
+[[table]]
+id = "readme-headline"
+dataset = "demo"
+title = "Full chat path, Acme demo set (20 questions, 7 not answerable from the pages)"
+provider = "Google Gemini"
+model = "gemini-3.5-flash-lite"
+run_ids = ["application-demo-20261021T174004Z"]
+metrics = [
+  { name = "application.correct", label = "correct: answered from an expected page with at least 2/3 of the expected facts, or abstained when it should" },
+  { name = "application.verified", label = "verified badge (a server-written abstain counts as verified)" },
+  { name = "application.abstain_correct", label = "abstained exactly when the pages had no answer" },
+]
+
+[[table]]
+id = "readme-private"
+dataset = "private"
+title = "Answers on the owner's real notes (32 questions; numbers only, the set is private)"
+provider = "Google Gemini"
+model = "gemini-3.5-flash-lite"
+run_ids = ["generator-A-20261022T071117Z"]
+metrics = [
+  { name = "generator.correct", label = "correct" },
+  { name = "generator.verified", label = "verified badge" },
+  { name = "generator.abstain_correct", label = "abstained exactly when the notes had no answer" },
+]
+
+[[table]]
+id = "readme-verifier"
+dataset = "demo"
+title = "Verifier on planted errors, Acme demo set (the measure of guarantee 1)"
+provider = "Google Gemini"
+model = "gemini-3.5-flash-lite"
+run_ids = ["verifier-demo-20261021T174717Z"]
+metrics = [
+  { name = "verifier.badge_flip_recall", label = "badge-flip recall: a planted wrong fact took the answer off verified" },
+]
